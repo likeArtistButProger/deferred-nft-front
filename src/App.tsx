@@ -16,7 +16,7 @@ type Offer = {
 }
 
 function DeferredBuy() {
-    const { account, library, activate } = useWeb3React();
+    const { account, activate } = useWeb3React();
     const [nftAddress, setNftAddress] = useState('');
     const [tokenId, setTokenId] = useState('');
     const [availableAt, setAvailableAt] = useState('');
@@ -32,7 +32,7 @@ function DeferredBuy() {
     useEffect(() => {
       //@ts-ignore
       window.ethereum.enable();
-    }, [window]);
+    }, []);
 
     useEffect(() => {
         async function fetchOffers() {
