@@ -1,86 +1,128 @@
-import React, { useState, useEffect, useMemo } from 'react';
-import { Container, Form, Button, Table } from 'react-bootstrap';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import { Container, Form, Table } from 'react-bootstrap';
 import DeferredBuyAbi from "./abis/DeferredBuy.json";
-import * as ethers from "ethers";
+import ERC721Abi from "./abis/ERC721.json";
+import { ethers } from "ethers";
 import { useWeb3React } from "@web3-react/core";
 import { Injected } from './constants';
+import bn from "bignumber.js";
+import { useContract } from './useContract';
+import { Button } from "./components";
 
 const contractAddress = '0xb8400a893e02c2969fBAe225c74cCc444E374caA'; // Replace with actual contract address
 
 type Offer = {
-  nftAddress: string,
-  tokenId: string,
+  nftAddress:  string,
   availableAt: number,
-  offerPrice: string,
-  claimed: boolean
+  claimed:     boolean,
+  tokenId:     ethers.BigNumber,
+  offerPrice:  ethers.BigNumber,
+}
+
+const ethersToBN = (num: ethers.BigNumber): bn => {
+    return new bn(num.toString());
 }
 
 function DeferredBuy() {
-    const { account, activate } = useWeb3React();
-    const [nftAddress, setNftAddress] = useState('');
-    const [tokenId, setTokenId] = useState('');
-    const [availableAt, setAvailableAt] = useState('');
-    const [offerPrice, setOfferPrice] = useState('');
+    const { account, activate, library } = useWeb3React();
+    const [nftAddress, setNftAddress] = useState<string>();
+    const [tokenId, setTokenId] = useState<string>();
+    const [availableAt, setAvailableAt] = useState<string>();
+    const [offerPrice, setOfferPrice] = useState<string>()
+    const deferredBuyContract = useContract(contractAddress, DeferredBuyAbi);
 
     const [offers, setOffers] = useState<Offer[]>([]);
 
-    const deferredBuy = useMemo(() => {
-      // @ts-ignore
-      return new ethers.Contract(contractAddress, DeferredBuyAbi, window.ethereum);
-    }, []);
-
     useEffect(() => {
-      //@ts-ignore
-      window.ethereum.enable();
-    }, []);
+        const isWalletConncted = localStorage.getItem("connector");
 
-    useEffect(() => {
-        async function fetchOffers() {
-            if(!!account && !!deferredBuy) {
-              const offers = await deferredBuy.getAllOffers();
-
-              setOffers(offers);
-            }
+        if(isWalletConncted) {
+            activate(Injected);
         }
+    }, [activate]);
+
+    const connect = useCallback(() => {
+        activate(Injected);
+        localStorage.setItem("connector", "metamask");
+    }, [activate]);
+
+    const handleCreateOffer = () => {
+        if(!deferredBuyContract || !account) {
+            return;
+        }
+
+        const startFrom = (parseInt(availableAt ?? "0") / 1000).toFixed(0);
+
+        const decimals = new bn(10).pow(18);
+        const offerPriceArg = new bn(offerPrice ?? "0").times(decimals).toFixed();
+
+        console.log(nftAddress ?? "", tokenId ?? "", startFrom, { value: offerPriceArg })
+        
+        deferredBuyContract.makeAnOffer(nftAddress ?? "", tokenId ?? "", startFrom, { value: offerPriceArg });
+    }
+
+    const fetchOffers = useCallback(async () => {
+        if(!!deferredBuyContract && !!account) {
+            const offersRaw = await deferredBuyContract.getAllOffers();
+
+            setOffers(offersRaw)
+        }
+    }, [account, deferredBuyContract, setOffers]);
+
+    useEffect(() => {
         fetchOffers();
-    }, [deferredBuy, account]);
 
-    async function handleCreateOffer(event: any) {
-        if(!account || !deferredBuy) {
-          return;
+        const interval = setInterval(() => {
+            fetchOffers();
+        }, 10_000);
+
+        return () => {
+            clearInterval(interval);
         }
+    }, [fetchOffers]);
 
-        event.preventDefault();
-        await deferredBuy.makeAnOffer(nftAddress, tokenId, availableAt, { value: ethers.parseEther(offerPrice) });
-        setNftAddress('');
-        setTokenId('');
-        setAvailableAt('');
-        setOfferPrice('');
-        // const offers_ = await deferredBuy.getAllOffers();
-        // setOffers(offers_);
-    }
+    const handleClaimOffer = async (offerId: number) => {
+        if(!!deferredBuyContract && !!account) {
+            const offer = offers[offerId];
+            
+            const nftContract = new ethers.Contract(offer.nftAddress, ERC721Abi, library.getSigner());
 
-    async function handleClaimOffer(index: number) {
-        if(!account || !deferredBuy) {
-          return;
+            const approvedAddress = await nftContract.getApproved(offer.tokenId);
+
+            if(approvedAddress.toLowerCase() !== contractAddress.toLowerCase()) {
+                const gas = await nftContract.estimateGas.approve(contractAddress, offer.tokenId).catch(err => {
+                    console.log(err);
+
+                    return ethers.BigNumber.from("720000");
+                });
+
+                await (await nftContract.approve(contractAddress, offer.tokenId, { gasLimit: gas })).wait();
+            }
+
+            const gasEstimationResult = await deferredBuyContract.estimateGas.claimOffer(offerId)
+                .catch((err) => {
+                    console.log(err);
+
+                    return ethers.BigNumber.from("720000");
+                });
+            const gas = gasEstimationResult;
+
+            deferredBuyContract.claimOffer(offerId, { gasLimit: gas });
         }
-
-        await deferredBuy.claimOffer(index);
-        const offers_ = await deferredBuy.getAllOffers();
-        setOffers(offers_);
-    }
-
-    function formatDate(timestamp: number) {
-        const date = new Date(timestamp * 1000);
-        return date.toLocaleString();
     }
 
     return (
         <Container>
-            <button onClick={() => { activate(Injected) }}>Connect wallet</button>
+            {
+                !account ? (
+                    <button onClick={connect}>Connect wallet</button>
+                ) : (
+                    <div>{account}</div>
+                )
+            }
             <h1>DeferredBuy dApp</h1>
             <p>Create an offer:</p>
-            <Form onSubmit={handleCreateOffer}>
+            <div onSubmit={handleCreateOffer}>
                 <Form.Group>
                     <Form.Label>NFT Contract Address</Form.Label>
                     <Form.Control type="text" value={nftAddress} onChange={event => setNftAddress(event.target.value)} required />
@@ -97,8 +139,8 @@ function DeferredBuy() {
                     <Form.Label>Offer Price (in ETH)</Form.Label>
                     <Form.Control type="number" step="any" value={offerPrice} onChange={event => setOfferPrice(event.target.value)} required />
                 </Form.Group>
-                <Button type="submit" variant="primary">Create Offer</Button>
-            </Form>
+                <Button onClick={handleCreateOffer}>Create Offer</Button>
+            </div>
             <hr />
             <p>Existing Offers:</p>
             <Table>
@@ -115,11 +157,11 @@ function DeferredBuy() {
                 {offers.map((offer, index) => (
                     <tr key={index}>
                         <td>{offer.nftAddress}</td>
-                        <td>{offer.tokenId}</td>
-                        <td>{formatDate(offer.availableAt)}</td>
-                        <td>{ethers.formatEther(offer.offerPrice)} ETH</td>
+                        <td>{offer.tokenId.toString()}</td>
+                        <td>{new Date(offer.availableAt).getTime()}</td>
+                        <td>{ethers.utils.formatEther(offer.offerPrice)} ETH</td>
                         {!offer.claimed && offer.availableAt <= Math.floor(Date.now() / 1000) ?
-                            <td><Button variant="primary" onClick={() => handleClaimOffer(index)}>Claim</Button></td> :
+                            <td><Button onClick={() => handleClaimOffer(index)}>Claim</Button></td> :
                             <td>-</td>
                         }
                     </tr>

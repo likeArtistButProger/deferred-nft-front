@@ -3,12 +3,12 @@ import ReactDOM from 'react-dom/client';
 import './index.css';
 import App from './App';
 import reportWebVitals from './reportWebVitals';
-import * as ethers from "ethers";
+import {ethers} from "ethers";
 import { Web3ReactProvider } from '@web3-react/core';
 
-const getLibrary = (provider: any) => {
-  // @ts-ignore
-  const library = new ethers.BrowserProvider(window.ethereum);
+const getLibrary = (connector: any) => {
+  const library = new ethers.providers.Web3Provider(connector);
+  library.pollingInterval = 15000;
 
   return library;
 }
@@ -16,6 +16,7 @@ const getLibrary = (provider: any) => {
 const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
+
 root.render(
   <React.StrictMode>
     <Web3ReactProvider getLibrary={getLibrary}>
