@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Container, Form, Table } from 'react-bootstrap';
 import DeferredBuyAbi from "./abis/DeferredBuy.json";
 import ERC721Abi from "./abis/ERC721.json";
@@ -17,10 +17,6 @@ type Offer = {
   claimed:     boolean,
   tokenId:     ethers.BigNumber,
   offerPrice:  ethers.BigNumber,
-}
-
-const ethersToBN = (num: ethers.BigNumber): bn => {
-    return new bn(num.toString());
 }
 
 function DeferredBuy() {
