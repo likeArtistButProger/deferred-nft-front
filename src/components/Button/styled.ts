@@ -4,8 +4,15 @@ import { Variant } from "./types";
 
 const ButtonStyled = styled.button<{ variant: Variant }>`
     padding: 6px 10px;
-    border: none;
-    box-shadow: none;
+    background: ${props => props.theme.colors.Black};
+    color: ${props => props.theme.colors.Yellow};
+    border: 1px solid ${props => props.theme.colors.Yellow};
+    border-radius: 10px;
+    cursor: pointer;
+
+    &:hover {
+        background: ${props => props.theme.colors.Purple};
+    }
 
     ${({variant}) => {
         switch(variant) {
@@ -14,12 +21,6 @@ const ButtonStyled = styled.button<{ variant: Variant }>`
                     padding: 10px 16px;
                     font-size: 18px;
                     line-height: 28px;
-                `;
-            case "header":
-                return css`
-                    padding: 8px 5px;
-                    font-size: 16px;
-                    line-height: 24px;
                 `;
             case "usual":
                 return css`

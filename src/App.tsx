@@ -42,19 +42,6 @@ function DeferredBuy() {
 
     // const [offers, setOffers] = useState<Offer[]>([]);
 
-    // useEffect(() => {
-    //     const isWalletConncted = localStorage.getItem("connector");
-
-    //     if(isWalletConncted) {
-    //         activate(Injected);
-    //     }
-    // }, [activate]);
-
-    // const connect = useCallback(() => {
-    //     activate(Injected);
-    //     localStorage.setItem("connector", "metamask");
-    // }, [activate]);
-
     // const handleCreateOffer = () => {
     //     if(!deferredBuyContract || !account) {
     //         return;
@@ -69,26 +56,6 @@ function DeferredBuy() {
         
     //     deferredBuyContract.makeAnOffer(nftAddress ?? "", tokenId ?? "", startFrom, { value: offerPriceArg });
     // }
-
-    // const fetchOffers = useCallback(async () => {
-    //     if(!!deferredBuyContract && !!account) {
-    //         const offersRaw = await deferredBuyContract.getAllOffers();
-
-    //         setOffers(offersRaw)
-    //     }
-    // }, [account, deferredBuyContract, setOffers]);
-
-    // useEffect(() => {
-    //     fetchOffers();
-
-    //     const interval = setInterval(() => {
-    //         fetchOffers();
-    //     }, 10_000);
-
-    //     return () => {
-    //         clearInterval(interval);
-    //     }
-    // }, [fetchOffers]);
 
     // const handleClaimOffer = async (offerId: number) => {
     //     if(!!deferredBuyContract && !!account) {
