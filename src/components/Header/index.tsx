@@ -1,6 +1,6 @@
 import React, { useMemo } from "react";
 import { AccountBox, Container, Links, Link } from "./styled";
-import Text from "../Text";
+// import Text from "../Text";
 import { useWeb3React } from "@web3-react/core";
 import Button from "../Button";
 import { useConnect } from "../../hooks";

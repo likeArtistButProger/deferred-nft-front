@@ -15,9 +15,10 @@ import type { Offer } from "../../../../types";
 
 interface Props {
     offer: Offer,
+    offerIndex: number,
 }
 
-const OfferCard = ({ offer }: Props) => {
+const OfferCard = ({ offer, offerIndex }: Props) => {
     const { account, library } = useWeb3React();
     const [assetMeta, setAssetMeta] = useState<{ [x: string]: any }>();
     const [waitingTimeLabel, setWaitingTimeLabel] = useState("");
@@ -48,13 +49,10 @@ const OfferCard = ({ offer }: Props) => {
 
         const update = async () => {
             const erc721Contract = new ethers.Contract(offer.nftAddress, ERC721Abi, !!account ? library.getSigner() : library);
-
             const metaLink = await erc721Contract.tokenURI(offer.tokenId);
+            const meta = await axios.get(metaLink).then(res => res.data);
 
-            console.log(metaLink);
-            const meta = await axios.get(metaLink);
-
-            console.log(meta);
+            setAssetMeta(meta);
         }
 
         update();
@@ -64,6 +62,40 @@ const OfferCard = ({ offer }: Props) => {
         const decimals = new bn(10).pow(18);
         return new bn(offer?.offerPrice.toString() ?? "0").div(decimals).toFixed(6)
     }, [offer]);
+
+    const handleClaimOffer = async (offerId: number) => {
+        if(!!deferredBuyContract && !!account) {
+            const nftContract = new ethers.Contract(offer.nftAddress, ERC721Abi, library.getSigner());
+
+            const approvedAddress = await nftContract.getApproved(offer.tokenId);
+
+            if(approvedAddress.toLowerCase() !== deferredBuyAddress.toLowerCase()) {
+                const gas = await nftContract.estimateGas.approve(deferredBuyAddress, offer.tokenId).catch(err => {
+                    console.log(err);
+
+                    return ethers.BigNumber.from("720000");
+                });
+
+                await (await nftContract.approve(deferredBuyAddress, offer.tokenId, { gasLimit: gas }))
+                    .wait()
+                    .then(() => {
+                        
+                    });
+
+                return;
+            }
+
+            const gasEstimationResult = await deferredBuyContract.estimateGas.claimOffer(offerId)
+                .catch((err) => {
+                    console.log(err);
+
+                    return ethers.BigNumber.from("720000");
+                });
+            const gas = gasEstimationResult;
+
+            deferredBuyContract.claimOffer(offerId, { gasLimit: gas });
+        }
+    }
 
     return (
         <Card>
@@ -90,7 +122,7 @@ const OfferCard = ({ offer }: Props) => {
                 </Text>
             </Row>
             <Row centered>
-                <Button variant="usual">
+                <Button variant="usual" onClick={() => { handleClaimOffer(offerIndex) }}>
                     Claim
                 </Button>
             </Row>

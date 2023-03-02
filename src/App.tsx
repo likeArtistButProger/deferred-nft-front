@@ -26,66 +26,13 @@ const router = createBrowserRouter([
             <>
                 <GlobalStyle />
                 <Header />
-                <Offers />
+                <CreateOffer />
             </>
         )
     }
 ]);
 
 function DeferredBuy() {
-    // const { account, activate, library } = useWeb3React();
-    // const [nftAddress, setNftAddress] = useState<string>();
-    // const [tokenId, setTokenId] = useState<string>();
-    // const [availableAt, setAvailableAt] = useState<string>();
-    // const [offerPrice, setOfferPrice] = useState<string>()
-    // const deferredBuyContract = useContract(contractAddress, DeferredBuyAbi);
-
-    // const [offers, setOffers] = useState<Offer[]>([]);
-
-    // const handleCreateOffer = () => {
-    //     if(!deferredBuyContract || !account) {
-    //         return;
-    //     }
-
-    //     const startFrom = (parseInt(availableAt ?? "0") / 1000).toFixed(0);
-
-    //     const decimals = new bn(10).pow(18);
-    //     const offerPriceArg = new bn(offerPrice ?? "0").times(decimals).toFixed();
-
-    //     console.log(nftAddress ?? "", tokenId ?? "", startFrom, { value: offerPriceArg })
-        
-    //     deferredBuyContract.makeAnOffer(nftAddress ?? "", tokenId ?? "", startFrom, { value: offerPriceArg });
-    // }
-
-    // const handleClaimOffer = async (offerId: number) => {
-    //     if(!!deferredBuyContract && !!account) {
-    //         const offer = offers[offerId];
-            
-    //         const nftContract = new ethers.Contract(offer.nftAddress, ERC721Abi, library.getSigner());
-
-    //         const approvedAddress = await nftContract.getApproved(offer.tokenId);
-
-    //         if(approvedAddress.toLowerCase() !== contractAddress.toLowerCase()) {
-    //             const gas = await nftContract.estimateGas.approve(contractAddress, offer.tokenId).catch(err => {
-    //                 console.log(err);
-
-    //                 return ethers.BigNumber.from("720000");
-    //             });
-
-    //             await (await nftContract.approve(contractAddress, offer.tokenId, { gasLimit: gas })).wait();
-    //         }
-
-    //         const gasEstimationResult = await deferredBuyContract.estimateGas.claimOffer(offerId)
-    //             .catch((err) => {
-    //                 console.log(err);
-
-    //                 return ethers.BigNumber.from("720000");
-    //             });
-    //         const gas = gasEstimationResult;
-
-    //         deferredBuyContract.claimOffer(offerId, { gasLimit: gas });
-    //     }
-    // }
 
     return (
         <RouterProvider router={router} />

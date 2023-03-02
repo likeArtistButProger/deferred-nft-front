@@ -9,8 +9,8 @@ const Offers = () => {
     return (
         <CardsGrid>
             {
-                offers.map((offer) => (
-                    <OfferCard offer={offer} />
+                offers.map((offer, index) => (
+                    <OfferCard offer={offer} offerIndex={index} />
                 ))
             }
         </CardsGrid>
