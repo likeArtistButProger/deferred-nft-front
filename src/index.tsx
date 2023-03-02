@@ -1,10 +1,11 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import './index.css';
-import App from './App';
-import reportWebVitals from './reportWebVitals';
 import {ethers} from "ethers";
 import { Web3ReactProvider } from '@web3-react/core';
+import { ThemeProvider } from 'styled-components';
+import reportWebVitals from './reportWebVitals';
+import App from './App';
+import { Colors } from './styles';
 
 const getLibrary = (connector: any) => {
   const library = new ethers.providers.Web3Provider(connector);
@@ -17,10 +18,16 @@ const root = ReactDOM.createRoot(
   document.getElementById('root') as HTMLElement
 );
 
+const theme = {
+  colors: Colors
+}
+
 root.render(
   <React.StrictMode>
     <Web3ReactProvider getLibrary={getLibrary}>
-      <App />
+      <ThemeProvider theme={theme}>
+        <App />
+      </ThemeProvider>
     </Web3ReactProvider>
   </React.StrictMode>
 );

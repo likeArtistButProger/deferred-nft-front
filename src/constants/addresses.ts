@@ -1,0 +1,1 @@
+export const deferredBuyAddress = '0xb8400a893e02c2969fBAe225c74cCc444E374caA';

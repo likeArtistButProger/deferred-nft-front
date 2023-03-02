@@ -1,0 +1,1 @@
+export type Variant = "header" | "connect-wallet" | "usual";
