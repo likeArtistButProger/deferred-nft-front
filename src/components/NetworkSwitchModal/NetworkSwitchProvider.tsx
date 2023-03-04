@@ -1,4 +1,4 @@
-import React, {useCallback, useContext, useState} from "react";
+import React from "react";
 import {useWeb3React} from "@web3-react/core";
 import { supportedChainIds } from "../../constants";
 import Modal from "./Modal";
