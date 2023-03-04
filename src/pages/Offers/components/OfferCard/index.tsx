@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useMemo } from "react";
+import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
 import { ethers } from "ethers";
 import bn from "bignumber.js";
 import { useWeb3React } from "@web3-react/core";
@@ -12,31 +12,67 @@ import ERC721Abi from "../../../../abis/ERC721.json";
 import DeferredBuyAbi from "../../../../abis/DeferredBuy.json";
 
 import type { Offer } from "../../../../types";
+import { Colors } from "../../../../styles";
 
 interface Props {
     offer: Offer,
     offerIndex: number,
 }
 
+const getIpfsLinkOnANeed = (link: string) => {
+    return link.replace("ipfs://", "https://gateway.pinata.cloud/ipfs/");
+};
+
 const OfferCard = ({ offer, offerIndex }: Props) => {
     const { account, library } = useWeb3React();
     const [assetMeta, setAssetMeta] = useState<{ [x: string]: any }>();
     const [waitingTimeLabel, setWaitingTimeLabel] = useState("");
-    const stopAtTime = useRef(0);
-    const timeLeft = useTimer(stopAtTime.current);
+    const [stopAtTime, setStopAtTime] = useState(0);
+    const timeLeft = useTimer(stopAtTime);
     const deferredBuyContract = useContract(deferredBuyAddress, DeferredBuyAbi);
+    const [isTokenApproved, setIsTokenApproved] = useState(false);
+
+    const checkIfTokenApproved = useCallback(async () => {
+        const nftContract = new ethers.Contract(offer.nftAddress, ERC721Abi, !!account ? library.getSigner() : library);
+        const approvedAddress = await nftContract.getApproved(offer.tokenId);
+
+        return approvedAddress.toLowerCase() === deferredBuyAddress.toLowerCase();
+    }, [account, offer, library]);
+
+    useEffect(() => {
+        if(!!account) {
+            const update = async () => {
+                const tokenApproval = await checkIfTokenApproved();
+
+                setIsTokenApproved(tokenApproval);
+            }
+
+            update();
+        }
+    }, [checkIfTokenApproved, account]);
 
     useEffect(() => {
         const now = new Date().getTime();
         const offerStartsAt = new Date(offer.availableAt * 1000).getTime();
-        const offerEndsAt = new Date(offer.availableAt + OFFER_TIME_PERIOD).getTime();
+        const offerEndsAt = new Date((offer.availableAt * 1000) + OFFER_TIME_PERIOD).getTime();
+
+        // console.log("NOW:", now);
+        // console.log("THE:", offerStartsAt);
+        // console.log("END:", offerEndsAt);
+
+        // console.log("COND 1:", now < offerStartsAt);
+        // console.log("COND 2:", now > offerStartsAt && now < offerEndsAt);
+        
+        // console.log(offerStartsAt - now);
 
         if(now < offerStartsAt) {
             setWaitingTimeLabel("Opens in:");
-            stopAtTime.current = offerStartsAt - now;
+            setStopAtTime(offerStartsAt - now);
         } else if(now > offerStartsAt && now < offerEndsAt) {
             setWaitingTimeLabel("Ends in:");
-            stopAtTime.current = offerEndsAt - now;
+
+            // console.log("ENDS IN:", offerEndsAt - now);
+            setStopAtTime(offerEndsAt - now);
         } else {
             setWaitingTimeLabel("Closed");
         }
@@ -50,7 +86,14 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
         const update = async () => {
             const erc721Contract = new ethers.Contract(offer.nftAddress, ERC721Abi, !!account ? library.getSigner() : library);
             const metaLink = await erc721Contract.tokenURI(offer.tokenId);
-            const meta = await axios.get(metaLink).then(res => res.data);
+            const httpsMetaLink = getIpfsLinkOnANeed(metaLink);
+            // console.log(httpsMetaLink);
+
+            const meta = await axios.get(httpsMetaLink).then(res => res.data);
+            // console.log(meta.image);
+            meta.image = getIpfsLinkOnANeed(meta.image);
+
+            // console.log(meta);
 
             setAssetMeta(meta);
         }
@@ -66,10 +109,9 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
     const handleClaimOffer = async (offerId: number) => {
         if(!!deferredBuyContract && !!account) {
             const nftContract = new ethers.Contract(offer.nftAddress, ERC721Abi, library.getSigner());
+            const isApproved = await checkIfTokenApproved();
 
-            const approvedAddress = await nftContract.getApproved(offer.tokenId);
-
-            if(approvedAddress.toLowerCase() !== deferredBuyAddress.toLowerCase()) {
+            if(!isApproved) {
                 const gas = await nftContract.estimateGas.approve(deferredBuyAddress, offer.tokenId).catch(err => {
                     console.log(err);
 
@@ -78,8 +120,10 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
 
                 await (await nftContract.approve(deferredBuyAddress, offer.tokenId, { gasLimit: gas }))
                     .wait()
-                    .then(() => {
-                        
+                    .then(async () => {
+                        const isApproved = await checkIfTokenApproved();
+
+                        setIsTokenApproved(isApproved);
                     });
 
                 return;
@@ -97,6 +141,40 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
         }
     }
 
+    const buttonState = useMemo(() => {
+        const now = new Date().getTime();
+        const startTime = offer.availableAt * 1000;
+        const endTime = (offer.availableAt * 1000) + OFFER_TIME_PERIOD;
+
+        if(now < startTime) {
+            return {
+                text: "Not available yet",
+                disabled: true
+            };
+        } else if(now > endTime) {
+            return {
+                text: "Closed",
+                disabled: true
+            };
+        } else if(offer.claimed) {
+            return {
+                text: "Claimed",
+                disabled: true
+            };
+        }
+         else if(!isTokenApproved) {
+            return {
+                text: "Approve",
+                disabled: false
+            };
+        } else {
+            return {
+                text: "Claim",
+                disabled: false
+            };
+        }
+    }, [offer, isTokenApproved]);
+
     return (
         <Card>
             <Row>
@@ -108,12 +186,17 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
                 </Text>
             </Row>
             <img
-                src={assetMeta?.image ?? "https://openseauserdata.com/files/b261626a159edf64a8a92aa7306053b8.png"}
+                style={{
+                    marginTop: "5px",
+                    border: `1px solid ${Colors.Yellow}`,
+                    borderRadius: "6px"
+                }}
+                src={getIpfsLinkOnANeed(assetMeta?.image ?? "")}
                 alt="asset"
                 width="100%"
                 height="200px"
             />
-            <Row>
+            <Row mt="10">
                 <Text variant="m" color="Yellow">
                     Price:
                 </Text>
@@ -121,9 +204,9 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
                     {offerPrice}
                 </Text>
             </Row>
-            <Row centered>
-                <Button variant="usual" onClick={() => { handleClaimOffer(offerIndex) }}>
-                    Claim
+            <Row mt="10" centered>
+                <Button variant="usual" onClick={() => { handleClaimOffer(offerIndex) }} disabled={buttonState.disabled}>
+                    {buttonState.text}
                 </Button>
             </Row>
         </Card>

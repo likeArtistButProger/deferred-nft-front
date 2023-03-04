@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { useWeb3React } from "@web3-react/core";
+import DatePicker from "react-datepicker";
 import bn from "bignumber.js";
 
 import { Button, Input, Text } from "../../components";
@@ -9,30 +10,29 @@ import DeferredBuyAbi from "../../abis/DeferredBuy.json";
 
 import { Field, PseudoFormContainer } from "./styled";
 
+import "./datepicker.css";
+
 const CreateOffer = () => {
     const { account } = useWeb3React();
     const [nftAddress, setNftAddress] = useState<string>();
     const [tokenId, setTokenId] = useState<string>();
-    const [availableAt, setAvailableAt] = useState<string>();
+    const [availableAt, setAvailableAt] = useState<Date|null>(new Date());
     const [offerPrice, setOfferPrice] = useState<string>()
 
     const deferredBuyContract = useContract(deferredBuyAddress, DeferredBuyAbi);
 
     const handleCreateOffer = () => {
-        if(!deferredBuyContract || !account) {
+        if(!deferredBuyContract || !account || !availableAt) {
             return;
         }
 
-        const startFrom = (parseInt(availableAt ?? "0") / 1000).toFixed(0);
+        const startFrom = Math.floor(availableAt.getTime() / 1000);
 
         const decimals = new bn(10).pow(18);
         const offerPriceArg = new bn(offerPrice ?? "0").times(decimals).toFixed();
 
-        console.log(nftAddress ?? "", tokenId ?? "", startFrom, { value: offerPriceArg })
-        
         deferredBuyContract.makeAnOffer(nftAddress ?? "", tokenId ?? "", startFrom, { value: offerPriceArg });
     }
-
 
     return (
         <PseudoFormContainer>
@@ -46,7 +46,13 @@ const CreateOffer = () => {
             </Field>
             <Field>
                 <Text variant="l" color="Purple">Available at</Text>
-                <Input type="text" value={availableAt} onChange={(event) => { setAvailableAt(event.target.value) }} />
+                <DatePicker
+                    selected={availableAt}
+                    onChange={(date) => setAvailableAt(date)}
+                    showTimeSelect
+                    dateFormat="MMMM d, yyyy h:mm aa"
+                />
+                {/* <Input type="text" value={availableAt} onChange={(event) => { setAvailableAt(event.target.value) }} /> */}
             </Field>
             <Field>
                 <Text variant="l" color="Purple">Offer price</Text>

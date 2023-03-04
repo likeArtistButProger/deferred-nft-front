@@ -14,6 +14,16 @@ const ButtonStyled = styled.button<{ variant: Variant }>`
         background: ${props => props.theme.colors.Purple};
     }
 
+    &:disabled {
+        color: ${props => props.theme.colors.LightRed};
+        border-color: ${props => props.theme.colors.LightRed};
+        cursor: initial;
+
+        &:hover {
+            background: ${props => props.theme.colors.Black};
+        }
+    }
+
     ${({variant}) => {
         switch(variant) {
             case "connect-wallet":

@@ -10,21 +10,25 @@ const formatTimeLeft = (time: number) => {
     const minutesLeft = castInt(allSeconds / 60) % 60;
     const hoursLeft = castInt(allSeconds / 3600);
 
-    return hoursLeft.toString() + ":" + minutesLeft.toString().padStart(2, "0") + ":" + secondsLeft.toString().padStart(2, "0");
+    return hoursLeft.toString().padStart(2, "0") + ":" + minutesLeft.toString().padStart(2, "0") + ":" + secondsLeft.toString().padStart(2, "0");
 }
 
 const useTimer = (stopAt: number) => {
-    const [timeLeft, setTimeLeft] = useState(stopAt - new Date().getTime());
+    const [timeLeft, setTimeLeft] = useState(0);
+
+    useEffect(() => {
+        setTimeLeft(stopAt);
+    }, [stopAt]);
 
     useEffect(() => {
         const interval = setInterval(() => {
-            setTimeLeft(prev => prev - 1000 > 0 ? prev - 1000 : 0);
+            setTimeLeft(timeLeft - 1000 > 0 ? timeLeft - 1000 : 0);
         }, 1000);
 
         return () => {
             clearInterval(interval);
         }
-    }, [setTimeLeft, stopAt]);
+    }, [stopAt, timeLeft]);
 
     return formatTimeLeft(timeLeft);
 };

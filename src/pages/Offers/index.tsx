@@ -10,7 +10,7 @@ const Offers = () => {
         <CardsGrid>
             {
                 offers.map((offer, index) => (
-                    <OfferCard offer={offer} offerIndex={index} />
+                    <OfferCard key={offer.nftAddress+offer.tokenId} offer={offer} offerIndex={index} />
                 ))
             }
         </CardsGrid>
