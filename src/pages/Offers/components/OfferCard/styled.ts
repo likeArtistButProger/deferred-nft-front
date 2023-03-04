@@ -15,7 +15,12 @@ const Row = styled.div<{ mt?: string, centered?: boolean }>`
     ${({centered}) => centered && css` justify-content: center; `}
 `;
 
+const LoadingContainer = styled.div`
+
+`;
+
 export {
     Card,
     Row,
+    LoadingContainer,
 }

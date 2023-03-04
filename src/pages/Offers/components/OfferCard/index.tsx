@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useRef, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import { ethers } from "ethers";
 import bn from "bignumber.js";
 import { useWeb3React } from "@web3-react/core";
+import { Circles } from "react-loader-spinner";
 import axios from "axios";
 
 import { useContract, useTimer } from "../../../../hooks";
 import { deferredBuyAddress, OFFER_TIME_PERIOD } from "../../../../constants";
-import { Card, Row } from "./styled";
+import { Card, LoadingContainer, Row } from "./styled";
 import { Button, Text } from "../../../../components";
 import ERC721Abi from "../../../../abis/ERC721.json";
 import DeferredBuyAbi from "../../../../abis/DeferredBuy.json";
@@ -30,7 +31,10 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
     const [stopAtTime, setStopAtTime] = useState(0);
     const timeLeft = useTimer(stopAtTime);
     const deferredBuyContract = useContract(deferredBuyAddress, DeferredBuyAbi);
+    const [isMetaLoading, setIsMetaLoading] = useState(false);
     const [isTokenApproved, setIsTokenApproved] = useState(false);
+    const [isTxPending, setIsTxPending] = useState(false);
+    const [isOwner, setIsOwner] = useState(false);
 
     const checkIfTokenApproved = useCallback(async () => {
         const nftContract = new ethers.Contract(offer.nftAddress, ERC721Abi, !!account ? library.getSigner() : library);
@@ -52,18 +56,21 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
     }, [checkIfTokenApproved, account]);
 
     useEffect(() => {
+        if(!!account) {
+            const update = async () => {
+                const owner = await deferredBuyContract.owner();
+
+                setIsOwner(owner.toLowerCase() === account.toLowerCase());
+            }
+
+            update();
+        }
+    }, [account, deferredBuyContract]);
+
+    useEffect(() => {
         const now = new Date().getTime();
         const offerStartsAt = new Date(offer.availableAt * 1000).getTime();
         const offerEndsAt = new Date((offer.availableAt * 1000) + OFFER_TIME_PERIOD).getTime();
-
-        // console.log("NOW:", now);
-        // console.log("THE:", offerStartsAt);
-        // console.log("END:", offerEndsAt);
-
-        // console.log("COND 1:", now < offerStartsAt);
-        // console.log("COND 2:", now > offerStartsAt && now < offerEndsAt);
-        
-        // console.log(offerStartsAt - now);
 
         if(now < offerStartsAt) {
             setWaitingTimeLabel("Opens in:");
@@ -71,7 +78,6 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
         } else if(now > offerStartsAt && now < offerEndsAt) {
             setWaitingTimeLabel("Ends in:");
 
-            // console.log("ENDS IN:", offerEndsAt - now);
             setStopAtTime(offerEndsAt - now);
         } else {
             setWaitingTimeLabel("Closed");
@@ -84,18 +90,17 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
         }
 
         const update = async () => {
+            setIsMetaLoading(true);
+
             const erc721Contract = new ethers.Contract(offer.nftAddress, ERC721Abi, !!account ? library.getSigner() : library);
             const metaLink = await erc721Contract.tokenURI(offer.tokenId);
             const httpsMetaLink = getIpfsLinkOnANeed(metaLink);
-            // console.log(httpsMetaLink);
 
             const meta = await axios.get(httpsMetaLink).then(res => res.data);
-            // console.log(meta.image);
             meta.image = getIpfsLinkOnANeed(meta.image);
 
-            // console.log(meta);
-
             setAssetMeta(meta);
+            setIsMetaLoading(false);
         }
 
         update();
@@ -108,6 +113,31 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
 
     const handleClaimOffer = async (offerId: number) => {
         if(!!deferredBuyContract && !!account) {
+            setIsTxPending(true);
+
+            const now = new Date().getTime();
+            const endTime = (offer.availableAt * 1000) + OFFER_TIME_PERIOD;
+
+            if((now > endTime) && isOwner && !offer.claimed) {
+                const gas = await deferredBuyContract.estimateGas.withdraw(offerId).catch(err => {
+                    console.log(err);
+
+                    return ethers.BigNumber.from("720000");
+                });
+
+                const tx = await deferredBuyContract.withdraw(offerId, { gasLimit: gas })
+                    .catch(() => {
+                        setIsTxPending(false);
+                    });
+
+                tx.wait()
+                    .finally(() => {
+                        setIsTxPending(false);
+                    });
+
+                return;
+            }
+
             const nftContract = new ethers.Contract(offer.nftAddress, ERC721Abi, library.getSigner());
             const isApproved = await checkIfTokenApproved();
 
@@ -118,12 +148,19 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
                     return ethers.BigNumber.from("720000");
                 });
 
-                await (await nftContract.approve(deferredBuyAddress, offer.tokenId, { gasLimit: gas }))
-                    .wait()
+                const tx = await nftContract.approve(deferredBuyAddress, offer.tokenId, { gasLimit: gas })
+                    .catch(() => {
+                        setIsTxPending(false);
+                    })
+                
+                tx.wait()
                     .then(async () => {
                         const isApproved = await checkIfTokenApproved();
 
                         setIsTokenApproved(isApproved);
+                    })
+                    .finally(() =>{
+                        setIsTxPending(false);
                     });
 
                 return;
@@ -137,7 +174,15 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
                 });
             const gas = gasEstimationResult;
 
-            deferredBuyContract.claimOffer(offerId, { gasLimit: gas });
+            const tx = await deferredBuyContract.claimOffer(offerId, { gasLimit: gas })
+                .catch(() => {
+                    setIsTxPending(false);
+                })
+
+            tx.wait()
+                .finally(() => {
+                    setIsTxPending(false);
+                });
         }
     }
 
@@ -151,7 +196,12 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
                 text: "Not available yet",
                 disabled: true
             };
-        } else if(now > endTime) {
+        } else if((now > endTime) && isOwner && !offer.claimed) {
+            return {
+                text: "Withdraw",
+                disabled: false
+            }
+        }else if(now > endTime) {
             return {
                 text: "Closed",
                 disabled: true
@@ -161,6 +211,12 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
                 text: "Claimed",
                 disabled: true
             };
+        }
+        else if(isTxPending) {
+            return {
+                text: "Executing tx...",
+                disabled: true
+            }
         }
          else if(!isTokenApproved) {
             return {
@@ -173,7 +229,7 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
                 disabled: false
             };
         }
-    }, [offer, isTokenApproved]);
+    }, [offer, isTokenApproved, isTxPending, isOwner]);
 
     return (
         <Card>
@@ -185,17 +241,34 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
                     {timeLeft}
                 </Text>
             </Row>
-            <img
-                style={{
-                    marginTop: "5px",
-                    border: `1px solid ${Colors.Yellow}`,
-                    borderRadius: "6px"
-                }}
-                src={getIpfsLinkOnANeed(assetMeta?.image ?? "")}
-                alt="asset"
-                width="100%"
-                height="200px"
-            />
+            {
+                isMetaLoading ? (
+                    <LoadingContainer>
+                        <Circles
+                            width="200"
+                            height="200"
+                            color={Colors.Yellow}
+                            visible={true}
+                        />
+                    </LoadingContainer>
+                ) : (
+                    <img
+                        style={{
+                            marginTop: "5px",
+                            border: `1px solid ${Colors.Yellow}`,
+                            borderRadius: "6px"
+                        }}
+                        src={getIpfsLinkOnANeed(assetMeta?.image ?? "")}
+                        alt="asset"
+                        width="200px"
+                        height="200px"
+                        onError={(e) => {
+                            e.currentTarget.src = "images/not-found.png";
+                            e.currentTarget.onerror = null;
+                        }}
+                    />
+                )
+            }
             <Row mt="10">
                 <Text variant="m" color="Yellow">
                     Price:

@@ -1,0 +1,1 @@
+export const supportedChainIds: number[] = [5];
