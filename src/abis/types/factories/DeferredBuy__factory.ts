@@ -56,7 +56,7 @@ const _abi = [
       {
         indexed: false,
         internalType: "uint256",
-        name: "tokenId",
+        name: "claims",
         type: "uint256",
       },
       {
@@ -145,14 +145,9 @@ const _abi = [
         type: "uint32",
       },
       {
-        internalType: "bool",
-        name: "claimed",
-        type: "bool",
-      },
-      {
-        internalType: "uint256",
-        name: "tokenId",
-        type: "uint256",
+        internalType: "uint32",
+        name: "maxClaims",
+        type: "uint32",
       },
       {
         internalType: "uint256",
@@ -183,10 +178,52 @@ const _abi = [
         name: "offerId",
         type: "uint256",
       },
+      {
+        internalType: "uint256",
+        name: "tokenId",
+        type: "uint256",
+      },
     ],
     name: "claimOffer",
     outputs: [],
     stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "offerId",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256[]",
+        name: "tokenIds",
+        type: "uint256[]",
+      },
+    ],
+    name: "claimOfferMultiple",
+    outputs: [],
+    stateMutability: "nonpayable",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    name: "claimedOffers",
+    outputs: [
+      {
+        internalType: "uint256",
+        name: "",
+        type: "uint256",
+      },
+    ],
+    stateMutability: "view",
     type: "function",
   },
   {
@@ -206,14 +243,9 @@ const _abi = [
             type: "uint32",
           },
           {
-            internalType: "bool",
-            name: "claimed",
-            type: "bool",
-          },
-          {
-            internalType: "uint256",
-            name: "tokenId",
-            type: "uint256",
+            internalType: "uint32",
+            name: "maxClaims",
+            type: "uint32",
           },
           {
             internalType: "uint256",
@@ -238,12 +270,12 @@ const _abi = [
       },
       {
         internalType: "uint256",
-        name: "tokenId",
+        name: "availableAt",
         type: "uint256",
       },
       {
         internalType: "uint256",
-        name: "availableAt",
+        name: "maxClaims",
         type: "uint256",
       },
     ],

@@ -1,1 +1,1 @@
-export const deferredBuyAddress = '0xD93236e842237AB0A4862b53Ffa24Ab00fA62eB6';
+export const deferredBuyAddress = '0x0956Cb8c8B59F17121F3988fDF46E98c4734f230';

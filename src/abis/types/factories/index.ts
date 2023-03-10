@@ -2,3 +2,4 @@
 /* tslint:disable */
 /* eslint-disable */
 export { DeferredBuy__factory } from "./DeferredBuy__factory";
+export { ERC721__factory } from "./ERC721__factory";

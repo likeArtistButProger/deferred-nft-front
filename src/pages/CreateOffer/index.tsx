@@ -15,14 +15,14 @@ import "./datepicker.css";
 const CreateOffer = () => {
     const { account } = useWeb3React();
     const [nftAddress, setNftAddress] = useState<string>();
-    const [tokenId, setTokenId] = useState<string>();
+    const [tokensToBuy, setTokensToBuy] = useState<string>();
     const [availableAt, setAvailableAt] = useState<Date|null>(new Date());
-    const [offerPrice, setOfferPrice] = useState<string>()
+    const [offerPrice, setOfferPrice] = useState<string>();
 
     const deferredBuyContract = useContract(deferredBuyAddress, DeferredBuyAbi);
 
     const handleCreateOffer = () => {
-        if(!deferredBuyContract || !account || !availableAt) {
+        if(!deferredBuyContract || !account || !availableAt || !tokensToBuy || !nftAddress) {
             return;
         }
 
@@ -31,7 +31,7 @@ const CreateOffer = () => {
         const decimals = new bn(10).pow(18);
         const offerPriceArg = new bn(offerPrice ?? "0").times(decimals).toFixed();
 
-        deferredBuyContract.makeAnOffer(nftAddress ?? "", tokenId ?? "", startFrom, { value: offerPriceArg });
+        deferredBuyContract.makeAnOffer(nftAddress, startFrom, tokensToBuy, { value: offerPriceArg });
     }
 
     return (
@@ -41,8 +41,8 @@ const CreateOffer = () => {
                 <Input type="text" value={nftAddress} onChange={(event) => { setNftAddress(event.target.value) }} />
             </Field>
             <Field>
-                <Text variant="l" color="Purple">Token ID</Text>
-                <Input type="text" value={tokenId} onChange={(event) => { setTokenId(event.target.value) }} />
+                <Text variant="l" color="Purple">Tokens to buy</Text>
+                <Input type="text" value={tokensToBuy} onChange={(event) => { setTokensToBuy(event.target.value) }} />
             </Field>
             <Field>
                 <Text variant="l" color="Purple">Available at</Text>
@@ -52,7 +52,6 @@ const CreateOffer = () => {
                     showTimeSelect
                     dateFormat="MMMM d, yyyy h:mm aa"
                 />
-                {/* <Input type="text" value={availableAt} onChange={(event) => { setAvailableAt(event.target.value) }} /> */}
             </Field>
             <Field>
                 <Text variant="l" color="Purple">Offer price</Text>

@@ -32,22 +32,14 @@ export declare namespace DeferredBuy {
   export type OfferStruct = {
     nftAddress: PromiseOrValue<string>;
     availableAt: PromiseOrValue<BigNumberish>;
-    claimed: PromiseOrValue<boolean>;
-    tokenId: PromiseOrValue<BigNumberish>;
+    maxClaims: PromiseOrValue<BigNumberish>;
     offerPrice: PromiseOrValue<BigNumberish>;
   };
 
-  export type OfferStructOutput = [
-    string,
-    number,
-    boolean,
-    BigNumber,
-    BigNumber
-  ] & {
+  export type OfferStructOutput = [string, number, number, BigNumber] & {
     nftAddress: string;
     availableAt: number;
-    claimed: boolean;
-    tokenId: BigNumber;
+    maxClaims: number;
     offerPrice: BigNumber;
   };
 }
@@ -57,7 +49,9 @@ export interface DeferredBuyInterface extends utils.Interface {
     "CLAIM_TIMEOUT()": FunctionFragment;
     "Offers(uint256)": FunctionFragment;
     "OffersLength()": FunctionFragment;
-    "claimOffer(uint256)": FunctionFragment;
+    "claimOffer(uint256,uint256)": FunctionFragment;
+    "claimOfferMultiple(uint256,uint256[])": FunctionFragment;
+    "claimedOffers(uint256)": FunctionFragment;
     "getAllOffers()": FunctionFragment;
     "makeAnOffer(address,uint256,uint256)": FunctionFragment;
     "owner()": FunctionFragment;
@@ -72,6 +66,8 @@ export interface DeferredBuyInterface extends utils.Interface {
       | "Offers"
       | "OffersLength"
       | "claimOffer"
+      | "claimOfferMultiple"
+      | "claimedOffers"
       | "getAllOffers"
       | "makeAnOffer"
       | "owner"
@@ -94,6 +90,14 @@ export interface DeferredBuyInterface extends utils.Interface {
   ): string;
   encodeFunctionData(
     functionFragment: "claimOffer",
+    values: [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "claimOfferMultiple",
+    values: [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>[]]
+  ): string;
+  encodeFunctionData(
+    functionFragment: "claimedOffers",
     values: [PromiseOrValue<BigNumberish>]
   ): string;
   encodeFunctionData(
@@ -132,6 +136,14 @@ export interface DeferredBuyInterface extends utils.Interface {
     data: BytesLike
   ): Result;
   decodeFunctionResult(functionFragment: "claimOffer", data: BytesLike): Result;
+  decodeFunctionResult(
+    functionFragment: "claimOfferMultiple",
+    data: BytesLike
+  ): Result;
+  decodeFunctionResult(
+    functionFragment: "claimedOffers",
+    data: BytesLike
+  ): Result;
   decodeFunctionResult(
     functionFragment: "getAllOffers",
     data: BytesLike
@@ -180,7 +192,7 @@ export type ClaimEventFilter = TypedEventFilter<ClaimEvent>;
 export interface DepositEventObject {
   nftAddress: string;
   availableAt: BigNumber;
-  tokenId: BigNumber;
+  claims: BigNumber;
   offerPrice: BigNumber;
 }
 export type DepositEvent = TypedEvent<
@@ -246,11 +258,10 @@ export interface DeferredBuy extends BaseContract {
       arg0: PromiseOrValue<BigNumberish>,
       overrides?: CallOverrides
     ): Promise<
-      [string, number, boolean, BigNumber, BigNumber] & {
+      [string, number, number, BigNumber] & {
         nftAddress: string;
         availableAt: number;
-        claimed: boolean;
-        tokenId: BigNumber;
+        maxClaims: number;
         offerPrice: BigNumber;
       }
     >;
@@ -259,8 +270,20 @@ export interface DeferredBuy extends BaseContract {
 
     claimOffer(
       offerId: PromiseOrValue<BigNumberish>,
+      tokenId: PromiseOrValue<BigNumberish>,
       overrides?: Overrides & { from?: PromiseOrValue<string> }
     ): Promise<ContractTransaction>;
+
+    claimOfferMultiple(
+      offerId: PromiseOrValue<BigNumberish>,
+      tokenIds: PromiseOrValue<BigNumberish>[],
+      overrides?: Overrides & { from?: PromiseOrValue<string> }
+    ): Promise<ContractTransaction>;
+
+    claimedOffers(
+      arg0: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<[BigNumber]>;
 
     getAllOffers(
       overrides?: CallOverrides
@@ -268,8 +291,8 @@ export interface DeferredBuy extends BaseContract {
 
     makeAnOffer(
       nftAddress: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
       availableAt: PromiseOrValue<BigNumberish>,
+      maxClaims: PromiseOrValue<BigNumberish>,
       overrides?: PayableOverrides & { from?: PromiseOrValue<string> }
     ): Promise<ContractTransaction>;
 
@@ -296,11 +319,10 @@ export interface DeferredBuy extends BaseContract {
     arg0: PromiseOrValue<BigNumberish>,
     overrides?: CallOverrides
   ): Promise<
-    [string, number, boolean, BigNumber, BigNumber] & {
+    [string, number, number, BigNumber] & {
       nftAddress: string;
       availableAt: number;
-      claimed: boolean;
-      tokenId: BigNumber;
+      maxClaims: number;
       offerPrice: BigNumber;
     }
   >;
@@ -309,8 +331,20 @@ export interface DeferredBuy extends BaseContract {
 
   claimOffer(
     offerId: PromiseOrValue<BigNumberish>,
+    tokenId: PromiseOrValue<BigNumberish>,
     overrides?: Overrides & { from?: PromiseOrValue<string> }
   ): Promise<ContractTransaction>;
+
+  claimOfferMultiple(
+    offerId: PromiseOrValue<BigNumberish>,
+    tokenIds: PromiseOrValue<BigNumberish>[],
+    overrides?: Overrides & { from?: PromiseOrValue<string> }
+  ): Promise<ContractTransaction>;
+
+  claimedOffers(
+    arg0: PromiseOrValue<BigNumberish>,
+    overrides?: CallOverrides
+  ): Promise<BigNumber>;
 
   getAllOffers(
     overrides?: CallOverrides
@@ -318,8 +352,8 @@ export interface DeferredBuy extends BaseContract {
 
   makeAnOffer(
     nftAddress: PromiseOrValue<string>,
-    tokenId: PromiseOrValue<BigNumberish>,
     availableAt: PromiseOrValue<BigNumberish>,
+    maxClaims: PromiseOrValue<BigNumberish>,
     overrides?: PayableOverrides & { from?: PromiseOrValue<string> }
   ): Promise<ContractTransaction>;
 
@@ -346,11 +380,10 @@ export interface DeferredBuy extends BaseContract {
       arg0: PromiseOrValue<BigNumberish>,
       overrides?: CallOverrides
     ): Promise<
-      [string, number, boolean, BigNumber, BigNumber] & {
+      [string, number, number, BigNumber] & {
         nftAddress: string;
         availableAt: number;
-        claimed: boolean;
-        tokenId: BigNumber;
+        maxClaims: number;
         offerPrice: BigNumber;
       }
     >;
@@ -359,8 +392,20 @@ export interface DeferredBuy extends BaseContract {
 
     claimOffer(
       offerId: PromiseOrValue<BigNumberish>,
+      tokenId: PromiseOrValue<BigNumberish>,
       overrides?: CallOverrides
     ): Promise<void>;
+
+    claimOfferMultiple(
+      offerId: PromiseOrValue<BigNumberish>,
+      tokenIds: PromiseOrValue<BigNumberish>[],
+      overrides?: CallOverrides
+    ): Promise<void>;
+
+    claimedOffers(
+      arg0: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
+    ): Promise<BigNumber>;
 
     getAllOffers(
       overrides?: CallOverrides
@@ -368,8 +413,8 @@ export interface DeferredBuy extends BaseContract {
 
     makeAnOffer(
       nftAddress: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
       availableAt: PromiseOrValue<BigNumberish>,
+      maxClaims: PromiseOrValue<BigNumberish>,
       overrides?: CallOverrides
     ): Promise<void>;
 
@@ -405,13 +450,13 @@ export interface DeferredBuy extends BaseContract {
     "Deposit(address,uint256,uint256,uint256)"(
       nftAddress?: PromiseOrValue<string> | null,
       availableAt?: null,
-      tokenId?: null,
+      claims?: null,
       offerPrice?: null
     ): DepositEventFilter;
     Deposit(
       nftAddress?: PromiseOrValue<string> | null,
       availableAt?: null,
-      tokenId?: null,
+      claims?: null,
       offerPrice?: null
     ): DepositEventFilter;
 
@@ -443,15 +488,27 @@ export interface DeferredBuy extends BaseContract {
 
     claimOffer(
       offerId: PromiseOrValue<BigNumberish>,
+      tokenId: PromiseOrValue<BigNumberish>,
       overrides?: Overrides & { from?: PromiseOrValue<string> }
+    ): Promise<BigNumber>;
+
+    claimOfferMultiple(
+      offerId: PromiseOrValue<BigNumberish>,
+      tokenIds: PromiseOrValue<BigNumberish>[],
+      overrides?: Overrides & { from?: PromiseOrValue<string> }
+    ): Promise<BigNumber>;
+
+    claimedOffers(
+      arg0: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
     ): Promise<BigNumber>;
 
     getAllOffers(overrides?: CallOverrides): Promise<BigNumber>;
 
     makeAnOffer(
       nftAddress: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
       availableAt: PromiseOrValue<BigNumberish>,
+      maxClaims: PromiseOrValue<BigNumberish>,
       overrides?: PayableOverrides & { from?: PromiseOrValue<string> }
     ): Promise<BigNumber>;
 
@@ -484,15 +541,27 @@ export interface DeferredBuy extends BaseContract {
 
     claimOffer(
       offerId: PromiseOrValue<BigNumberish>,
+      tokenId: PromiseOrValue<BigNumberish>,
       overrides?: Overrides & { from?: PromiseOrValue<string> }
+    ): Promise<PopulatedTransaction>;
+
+    claimOfferMultiple(
+      offerId: PromiseOrValue<BigNumberish>,
+      tokenIds: PromiseOrValue<BigNumberish>[],
+      overrides?: Overrides & { from?: PromiseOrValue<string> }
+    ): Promise<PopulatedTransaction>;
+
+    claimedOffers(
+      arg0: PromiseOrValue<BigNumberish>,
+      overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
     getAllOffers(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     makeAnOffer(
       nftAddress: PromiseOrValue<string>,
-      tokenId: PromiseOrValue<BigNumberish>,
       availableAt: PromiseOrValue<BigNumberish>,
+      maxClaims: PromiseOrValue<BigNumberish>,
       overrides?: PayableOverrides & { from?: PromiseOrValue<string> }
     ): Promise<PopulatedTransaction>;
 

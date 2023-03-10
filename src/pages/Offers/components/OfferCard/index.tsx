@@ -12,19 +12,20 @@ import { Button, Text } from "../../../../components";
 import ERC721Abi from "../../../../abis/ERC721.json";
 import DeferredBuyAbi from "../../../../abis/DeferredBuy.json";
 
-import type { Offer } from "../../../../types";
+import type { UsableOffer } from "../../../../types";
 import { Colors } from "../../../../styles";
 
 interface Props {
-    offer: Offer,
+    offer: UsableOffer,
     offerIndex: number,
+    updateOffers: ()=>void,
 }
 
 const getIpfsLinkOnANeed = (link: string) => {
     return link.replace("ipfs://", "https://gateway.pinata.cloud/ipfs/");
 };
 
-const OfferCard = ({ offer, offerIndex }: Props) => {
+const OfferCard = ({ offer, offerIndex, updateOffers }: Props) => {
     const { account, library } = useWeb3React();
     const [assetMeta, setAssetMeta] = useState<{ [x: string]: any }>();
     const [waitingTimeLabel, setWaitingTimeLabel] = useState("");
@@ -111,6 +112,10 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
         return new bn(offer?.offerPrice.toString() ?? "0").div(decimals).toFixed(6)
     }, [offer]);
 
+    const availableClaims = useMemo(() => {
+        return ethers.BigNumber.from(offer.maxClaims).sub(offer.claimedTokensCount).toNumber();
+    }, [offer]);
+
     const handleClaimOffer = async (offerId: number) => {
         if(!!deferredBuyContract && !!account) {
             setIsTxPending(true);
@@ -118,7 +123,7 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
             const now = new Date().getTime();
             const endTime = (offer.availableAt * 1000) + OFFER_TIME_PERIOD;
 
-            if((now > endTime) && isOwner && !offer.claimed) {
+            if((now > endTime) && isOwner && (availableClaims > 0)) {
                 const gas = await deferredBuyContract.estimateGas.withdraw(offerId).catch(err => {
                     console.log(err);
 
@@ -166,7 +171,7 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
                 return;
             }
 
-            const gasEstimationResult = await deferredBuyContract.estimateGas.claimOffer(offerId)
+            const gasEstimationResult = await deferredBuyContract.estimateGas.claimOffer(offerId, offer.tokenId)
                 .catch((err) => {
                     console.log(err);
 
@@ -174,13 +179,14 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
                 });
             const gas = gasEstimationResult;
 
-            const tx = await deferredBuyContract.claimOffer(offerId, { gasLimit: gas })
+            const tx = await deferredBuyContract.claimOffer(offerId, offer.tokenId, { gasLimit: gas })
                 .catch(() => {
                     setIsTxPending(false);
                 })
 
             tx.wait()
                 .finally(() => {
+                    updateOffers();
                     setIsTxPending(false);
                 });
         }
@@ -196,7 +202,7 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
                 text: "Not available yet",
                 disabled: true
             };
-        } else if((now > endTime) && isOwner && !offer.claimed) {
+        } else if((now > endTime) && isOwner && (availableClaims > 0)) {
             return {
                 text: "Withdraw",
                 disabled: false
@@ -206,9 +212,9 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
                 text: "Closed",
                 disabled: true
             };
-        } else if(offer.claimed) {
+        } else if(availableClaims === 0) {
             return {
-                text: "Claimed",
+                text: "All claimed",
                 disabled: true
             };
         }
@@ -229,7 +235,7 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
                 disabled: false
             };
         }
-    }, [offer, isTokenApproved, isTxPending, isOwner]);
+    }, [availableClaims, offer, isTokenApproved, isTxPending, isOwner]);
 
     return (
         <Card>
@@ -275,6 +281,14 @@ const OfferCard = ({ offer, offerIndex }: Props) => {
                 </Text>
                 <Text variant="m" color="Yellow">
                     {offerPrice}
+                </Text>
+            </Row>
+            <Row mt="10">
+                <Text variant="m" color="Yellow">
+                    Claims left:
+                </Text>
+                <Text variant="m" color="Yellow">
+                    {availableClaims}
                 </Text>
             </Row>
             <Row mt="10" centered>
