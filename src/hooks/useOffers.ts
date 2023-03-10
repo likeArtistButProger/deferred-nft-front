@@ -1,6 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { useWeb3React } from "@web3-react/core";
-import { ethers } from "ethers";
 import { useContract } from "./useContract";
 import { deferredBuyAddress, alchemy } from "../constants";
 import DeferredBuyAbi from "../abis/DeferredBuy.json";
