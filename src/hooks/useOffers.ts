@@ -16,31 +16,30 @@ const useOffers = () => {
 
     const fetchOffers = useCallback(async () => {
         if(!!deferredBuyContract && !!account) {
-            const offersRaw = await deferredBuyContract.getAllOffers();
+            const offersLength = await deferredBuyContract._lastOffer();
 
-            const claimsHappenedRequests = [];
+            const offersRequests = [];
 
-            for(let i = 0; i < offersRaw.length; i++) {
-                const req = deferredBuyContract.claimedOffers(i);
-
-                claimsHappenedRequests.push(req);
+            for(let offerRequestIndex = 0; offerRequestIndex <= offersLength; offerRequestIndex++) {
+                const request = deferredBuyContract._offers[offerRequestIndex];
+                offersRequests.push(request);
             }
 
-            const claimedCounts = await Promise.all(claimsHappenedRequests);
+            const offersRaw = await Promise.all(offersRequests);
 
             const offersToSet = [];
 
             for(let offerIndex = 0; offerIndex < offersRaw.length; offerIndex++) {
                 const offerRaw = offersRaw[offerIndex];
-                const claimedCount = claimedCounts[offerIndex];
 
                 const offer: Offer = {
                     offerId:            offerIndex,
-                    nftAddress:         offerRaw.nftAddress,
+                    item:               offerRaw.item,
+                    offerer:            offerRaw.offerer,
                     availableAt:        offerRaw.availableAt,
-                    maxClaims:          offerRaw.maxClaims,
-                    claimedTokensCount: claimedCount,
-                    offerPrice:         offerRaw.offerPrice
+                    pricePerUnit:       offerRaw.pricePerUnit,
+                    claimed:            offerRaw.claimed,
+
                 }
 
                 offersToSet.push(offer);
@@ -65,7 +64,7 @@ const useOffers = () => {
                 for(const nft of ownedNfts) {
                     if(
                         nft.tokenType === "ERC721"
-                        && nft.contract.address.toLowerCase() === offer.nftAddress.toLowerCase()
+                        && nft.contract.address.toLowerCase() === offer.item.token.toLowerCase()
                     ) {
                         const offerToAdd = Object.assign({}, nft, offer);
                         

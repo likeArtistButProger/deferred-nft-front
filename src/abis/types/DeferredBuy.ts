@@ -28,47 +28,67 @@ import type {
   PromiseOrValue,
 } from "./common";
 
-export declare namespace DeferredBuy {
-  export type OfferStruct = {
-    nftAddress: PromiseOrValue<string>;
-    availableAt: PromiseOrValue<BigNumberish>;
-    maxClaims: PromiseOrValue<BigNumberish>;
-    offerPrice: PromiseOrValue<BigNumberish>;
+export declare namespace IDeferredBuy {
+  export type ItemStruct = {
+    itemType: PromiseOrValue<BigNumberish>;
+    token: PromiseOrValue<string>;
+    identifier: PromiseOrValue<BigNumberish>;
+    amount: PromiseOrValue<BigNumberish>;
   };
 
-  export type OfferStructOutput = [string, number, number, BigNumber] & {
-    nftAddress: string;
-    availableAt: number;
-    maxClaims: number;
-    offerPrice: BigNumber;
+  export type ItemStructOutput = [number, string, BigNumber, BigNumber] & {
+    itemType: number;
+    token: string;
+    identifier: BigNumber;
+    amount: BigNumber;
+  };
+
+  export type OfferStruct = {
+    item: IDeferredBuy.ItemStruct;
+    offerer: PromiseOrValue<string>;
+    availableAt: PromiseOrValue<BigNumberish>;
+    pricePerUnit: PromiseOrValue<BigNumberish>;
+    claimed: PromiseOrValue<BigNumberish>;
+  };
+
+  export type OfferStructOutput = [
+    IDeferredBuy.ItemStructOutput,
+    string,
+    BigNumber,
+    BigNumber,
+    BigNumber
+  ] & {
+    item: IDeferredBuy.ItemStructOutput;
+    offerer: string;
+    availableAt: BigNumber;
+    pricePerUnit: BigNumber;
+    claimed: BigNumber;
   };
 }
 
 export interface DeferredBuyInterface extends utils.Interface {
   functions: {
     "CLAIM_TIMEOUT()": FunctionFragment;
-    "Offers(uint256)": FunctionFragment;
-    "OffersLength()": FunctionFragment;
-    "claimOffer(uint256,uint256)": FunctionFragment;
-    "claimOfferMultiple(uint256,uint256[])": FunctionFragment;
-    "claimedOffers(uint256)": FunctionFragment;
-    "getAllOffers()": FunctionFragment;
-    "makeAnOffer(address,uint256,uint256)": FunctionFragment;
+    "_lastOffer()": FunctionFragment;
+    "_offers(uint32)": FunctionFragment;
+    "claimOffer(uint32,uint256[],uint256[])": FunctionFragment;
+    "getLastOffer()": FunctionFragment;
+    "getOffer(uint32)": FunctionFragment;
+    "makeAnOffer((uint8,address,uint256,uint256),uint256,uint256)": FunctionFragment;
     "owner()": FunctionFragment;
     "renounceOwnership()": FunctionFragment;
     "transferOwnership(address)": FunctionFragment;
-    "withdraw(uint256)": FunctionFragment;
+    "withdraw(uint32)": FunctionFragment;
   };
 
   getFunction(
     nameOrSignatureOrTopic:
       | "CLAIM_TIMEOUT"
-      | "Offers"
-      | "OffersLength"
+      | "_lastOffer"
+      | "_offers"
       | "claimOffer"
-      | "claimOfferMultiple"
-      | "claimedOffers"
-      | "getAllOffers"
+      | "getLastOffer"
+      | "getOffer"
       | "makeAnOffer"
       | "owner"
       | "renounceOwnership"
@@ -81,33 +101,33 @@ export interface DeferredBuyInterface extends utils.Interface {
     values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "Offers",
-    values: [PromiseOrValue<BigNumberish>]
+    functionFragment: "_lastOffer",
+    values?: undefined
   ): string;
   encodeFunctionData(
-    functionFragment: "OffersLength",
-    values?: undefined
+    functionFragment: "_offers",
+    values: [PromiseOrValue<BigNumberish>]
   ): string;
   encodeFunctionData(
     functionFragment: "claimOffer",
-    values: [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>]
+    values: [
+      PromiseOrValue<BigNumberish>,
+      PromiseOrValue<BigNumberish>[],
+      PromiseOrValue<BigNumberish>[]
+    ]
   ): string;
   encodeFunctionData(
-    functionFragment: "claimOfferMultiple",
-    values: [PromiseOrValue<BigNumberish>, PromiseOrValue<BigNumberish>[]]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "claimedOffers",
-    values: [PromiseOrValue<BigNumberish>]
-  ): string;
-  encodeFunctionData(
-    functionFragment: "getAllOffers",
+    functionFragment: "getLastOffer",
     values?: undefined
+  ): string;
+  encodeFunctionData(
+    functionFragment: "getOffer",
+    values: [PromiseOrValue<BigNumberish>]
   ): string;
   encodeFunctionData(
     functionFragment: "makeAnOffer",
     values: [
-      PromiseOrValue<string>,
+      IDeferredBuy.ItemStruct,
       PromiseOrValue<BigNumberish>,
       PromiseOrValue<BigNumberish>
     ]
@@ -130,24 +150,14 @@ export interface DeferredBuyInterface extends utils.Interface {
     functionFragment: "CLAIM_TIMEOUT",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(functionFragment: "Offers", data: BytesLike): Result;
-  decodeFunctionResult(
-    functionFragment: "OffersLength",
-    data: BytesLike
-  ): Result;
+  decodeFunctionResult(functionFragment: "_lastOffer", data: BytesLike): Result;
+  decodeFunctionResult(functionFragment: "_offers", data: BytesLike): Result;
   decodeFunctionResult(functionFragment: "claimOffer", data: BytesLike): Result;
   decodeFunctionResult(
-    functionFragment: "claimOfferMultiple",
+    functionFragment: "getLastOffer",
     data: BytesLike
   ): Result;
-  decodeFunctionResult(
-    functionFragment: "claimedOffers",
-    data: BytesLike
-  ): Result;
-  decodeFunctionResult(
-    functionFragment: "getAllOffers",
-    data: BytesLike
-  ): Result;
+  decodeFunctionResult(functionFragment: "getOffer", data: BytesLike): Result;
   decodeFunctionResult(
     functionFragment: "makeAnOffer",
     data: BytesLike
@@ -164,10 +174,10 @@ export interface DeferredBuyInterface extends utils.Interface {
   decodeFunctionResult(functionFragment: "withdraw", data: BytesLike): Result;
 
   events: {
-    "Claim(address,address,uint256,uint256)": EventFragment;
-    "Deposit(address,uint256,uint256,uint256)": EventFragment;
+    "Claim(uint32,address,address,uint256[],uint256[],uint256)": EventFragment;
+    "Deposit(uint32,address,address,uint256,uint256,uint256,uint256)": EventFragment;
     "OwnershipTransferred(address,address)": EventFragment;
-    "Withdraw(uint256,uint256)": EventFragment;
+    "Withdraw(uint32,uint256,uint256)": EventFragment;
   };
 
   getEvent(nameOrSignatureOrTopic: "Claim"): EventFragment;
@@ -177,26 +187,31 @@ export interface DeferredBuyInterface extends utils.Interface {
 }
 
 export interface ClaimEventObject {
+  offerId: number;
   claimer: string;
-  nftAddress: string;
-  tokenId: BigNumber;
-  offerValue: BigNumber;
+  token: string;
+  ids: BigNumber[];
+  amounts: BigNumber[];
+  claimerFunds: BigNumber;
 }
 export type ClaimEvent = TypedEvent<
-  [string, string, BigNumber, BigNumber],
+  [number, string, string, BigNumber[], BigNumber[], BigNumber],
   ClaimEventObject
 >;
 
 export type ClaimEventFilter = TypedEventFilter<ClaimEvent>;
 
 export interface DepositEventObject {
-  nftAddress: string;
+  offerId: number;
+  offerer: string;
+  token: string;
+  tokenId: BigNumber;
+  amount: BigNumber;
   availableAt: BigNumber;
-  claims: BigNumber;
-  offerPrice: BigNumber;
+  pricePerUnit: BigNumber;
 }
 export type DepositEvent = TypedEvent<
-  [string, BigNumber, BigNumber, BigNumber],
+  [number, string, string, BigNumber, BigNumber, BigNumber, BigNumber],
   DepositEventObject
 >;
 
@@ -215,11 +230,12 @@ export type OwnershipTransferredEventFilter =
   TypedEventFilter<OwnershipTransferredEvent>;
 
 export interface WithdrawEventObject {
-  offerId: BigNumber;
-  Timestamp: BigNumber;
+  offerId: number;
+  withdrawFunds: BigNumber;
+  timestamp: BigNumber;
 }
 export type WithdrawEvent = TypedEvent<
-  [BigNumber, BigNumber],
+  [number, BigNumber, BigNumber],
   WithdrawEventObject
 >;
 
@@ -254,45 +270,45 @@ export interface DeferredBuy extends BaseContract {
   functions: {
     CLAIM_TIMEOUT(overrides?: CallOverrides): Promise<[BigNumber]>;
 
-    Offers(
+    _lastOffer(overrides?: CallOverrides): Promise<[number]>;
+
+    _offers(
       arg0: PromiseOrValue<BigNumberish>,
       overrides?: CallOverrides
     ): Promise<
-      [string, number, number, BigNumber] & {
-        nftAddress: string;
-        availableAt: number;
-        maxClaims: number;
-        offerPrice: BigNumber;
+      [
+        IDeferredBuy.ItemStructOutput,
+        string,
+        BigNumber,
+        BigNumber,
+        BigNumber
+      ] & {
+        item: IDeferredBuy.ItemStructOutput;
+        offerer: string;
+        availableAt: BigNumber;
+        pricePerUnit: BigNumber;
+        claimed: BigNumber;
       }
     >;
 
-    OffersLength(overrides?: CallOverrides): Promise<[BigNumber]>;
-
     claimOffer(
       offerId: PromiseOrValue<BigNumberish>,
-      tokenId: PromiseOrValue<BigNumberish>,
+      ids: PromiseOrValue<BigNumberish>[],
+      amounts: PromiseOrValue<BigNumberish>[],
       overrides?: Overrides & { from?: PromiseOrValue<string> }
     ): Promise<ContractTransaction>;
 
-    claimOfferMultiple(
+    getLastOffer(overrides?: CallOverrides): Promise<[number]>;
+
+    getOffer(
       offerId: PromiseOrValue<BigNumberish>,
-      tokenIds: PromiseOrValue<BigNumberish>[],
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<ContractTransaction>;
-
-    claimedOffers(
-      arg0: PromiseOrValue<BigNumberish>,
       overrides?: CallOverrides
-    ): Promise<[BigNumber]>;
-
-    getAllOffers(
-      overrides?: CallOverrides
-    ): Promise<[DeferredBuy.OfferStructOutput[]]>;
+    ): Promise<[IDeferredBuy.OfferStructOutput]>;
 
     makeAnOffer(
-      nftAddress: PromiseOrValue<string>,
+      item: IDeferredBuy.ItemStruct,
+      pricePerUnit: PromiseOrValue<BigNumberish>,
       availableAt: PromiseOrValue<BigNumberish>,
-      maxClaims: PromiseOrValue<BigNumberish>,
       overrides?: PayableOverrides & { from?: PromiseOrValue<string> }
     ): Promise<ContractTransaction>;
 
@@ -315,45 +331,39 @@ export interface DeferredBuy extends BaseContract {
 
   CLAIM_TIMEOUT(overrides?: CallOverrides): Promise<BigNumber>;
 
-  Offers(
+  _lastOffer(overrides?: CallOverrides): Promise<number>;
+
+  _offers(
     arg0: PromiseOrValue<BigNumberish>,
     overrides?: CallOverrides
   ): Promise<
-    [string, number, number, BigNumber] & {
-      nftAddress: string;
-      availableAt: number;
-      maxClaims: number;
-      offerPrice: BigNumber;
+    [IDeferredBuy.ItemStructOutput, string, BigNumber, BigNumber, BigNumber] & {
+      item: IDeferredBuy.ItemStructOutput;
+      offerer: string;
+      availableAt: BigNumber;
+      pricePerUnit: BigNumber;
+      claimed: BigNumber;
     }
   >;
 
-  OffersLength(overrides?: CallOverrides): Promise<BigNumber>;
-
   claimOffer(
     offerId: PromiseOrValue<BigNumberish>,
-    tokenId: PromiseOrValue<BigNumberish>,
+    ids: PromiseOrValue<BigNumberish>[],
+    amounts: PromiseOrValue<BigNumberish>[],
     overrides?: Overrides & { from?: PromiseOrValue<string> }
   ): Promise<ContractTransaction>;
 
-  claimOfferMultiple(
+  getLastOffer(overrides?: CallOverrides): Promise<number>;
+
+  getOffer(
     offerId: PromiseOrValue<BigNumberish>,
-    tokenIds: PromiseOrValue<BigNumberish>[],
-    overrides?: Overrides & { from?: PromiseOrValue<string> }
-  ): Promise<ContractTransaction>;
-
-  claimedOffers(
-    arg0: PromiseOrValue<BigNumberish>,
     overrides?: CallOverrides
-  ): Promise<BigNumber>;
-
-  getAllOffers(
-    overrides?: CallOverrides
-  ): Promise<DeferredBuy.OfferStructOutput[]>;
+  ): Promise<IDeferredBuy.OfferStructOutput>;
 
   makeAnOffer(
-    nftAddress: PromiseOrValue<string>,
+    item: IDeferredBuy.ItemStruct,
+    pricePerUnit: PromiseOrValue<BigNumberish>,
     availableAt: PromiseOrValue<BigNumberish>,
-    maxClaims: PromiseOrValue<BigNumberish>,
     overrides?: PayableOverrides & { from?: PromiseOrValue<string> }
   ): Promise<ContractTransaction>;
 
@@ -376,45 +386,45 @@ export interface DeferredBuy extends BaseContract {
   callStatic: {
     CLAIM_TIMEOUT(overrides?: CallOverrides): Promise<BigNumber>;
 
-    Offers(
+    _lastOffer(overrides?: CallOverrides): Promise<number>;
+
+    _offers(
       arg0: PromiseOrValue<BigNumberish>,
       overrides?: CallOverrides
     ): Promise<
-      [string, number, number, BigNumber] & {
-        nftAddress: string;
-        availableAt: number;
-        maxClaims: number;
-        offerPrice: BigNumber;
+      [
+        IDeferredBuy.ItemStructOutput,
+        string,
+        BigNumber,
+        BigNumber,
+        BigNumber
+      ] & {
+        item: IDeferredBuy.ItemStructOutput;
+        offerer: string;
+        availableAt: BigNumber;
+        pricePerUnit: BigNumber;
+        claimed: BigNumber;
       }
     >;
 
-    OffersLength(overrides?: CallOverrides): Promise<BigNumber>;
-
     claimOffer(
       offerId: PromiseOrValue<BigNumberish>,
-      tokenId: PromiseOrValue<BigNumberish>,
+      ids: PromiseOrValue<BigNumberish>[],
+      amounts: PromiseOrValue<BigNumberish>[],
       overrides?: CallOverrides
     ): Promise<void>;
 
-    claimOfferMultiple(
+    getLastOffer(overrides?: CallOverrides): Promise<number>;
+
+    getOffer(
       offerId: PromiseOrValue<BigNumberish>,
-      tokenIds: PromiseOrValue<BigNumberish>[],
       overrides?: CallOverrides
-    ): Promise<void>;
-
-    claimedOffers(
-      arg0: PromiseOrValue<BigNumberish>,
-      overrides?: CallOverrides
-    ): Promise<BigNumber>;
-
-    getAllOffers(
-      overrides?: CallOverrides
-    ): Promise<DeferredBuy.OfferStructOutput[]>;
+    ): Promise<IDeferredBuy.OfferStructOutput>;
 
     makeAnOffer(
-      nftAddress: PromiseOrValue<string>,
+      item: IDeferredBuy.ItemStruct,
+      pricePerUnit: PromiseOrValue<BigNumberish>,
       availableAt: PromiseOrValue<BigNumberish>,
-      maxClaims: PromiseOrValue<BigNumberish>,
       overrides?: CallOverrides
     ): Promise<void>;
 
@@ -434,30 +444,40 @@ export interface DeferredBuy extends BaseContract {
   };
 
   filters: {
-    "Claim(address,address,uint256,uint256)"(
+    "Claim(uint32,address,address,uint256[],uint256[],uint256)"(
+      offerId?: PromiseOrValue<BigNumberish> | null,
       claimer?: PromiseOrValue<string> | null,
-      nftAddress?: PromiseOrValue<string> | null,
-      tokenId?: null,
-      offerValue?: null
+      token?: PromiseOrValue<string> | null,
+      ids?: null,
+      amounts?: null,
+      claimerFunds?: null
     ): ClaimEventFilter;
     Claim(
+      offerId?: PromiseOrValue<BigNumberish> | null,
       claimer?: PromiseOrValue<string> | null,
-      nftAddress?: PromiseOrValue<string> | null,
-      tokenId?: null,
-      offerValue?: null
+      token?: PromiseOrValue<string> | null,
+      ids?: null,
+      amounts?: null,
+      claimerFunds?: null
     ): ClaimEventFilter;
 
-    "Deposit(address,uint256,uint256,uint256)"(
-      nftAddress?: PromiseOrValue<string> | null,
+    "Deposit(uint32,address,address,uint256,uint256,uint256,uint256)"(
+      offerId?: null,
+      offerer?: PromiseOrValue<string> | null,
+      token?: PromiseOrValue<string> | null,
+      tokenId?: null,
+      amount?: null,
       availableAt?: null,
-      claims?: null,
-      offerPrice?: null
+      pricePerUnit?: null
     ): DepositEventFilter;
     Deposit(
-      nftAddress?: PromiseOrValue<string> | null,
+      offerId?: null,
+      offerer?: PromiseOrValue<string> | null,
+      token?: PromiseOrValue<string> | null,
+      tokenId?: null,
+      amount?: null,
       availableAt?: null,
-      claims?: null,
-      offerPrice?: null
+      pricePerUnit?: null
     ): DepositEventFilter;
 
     "OwnershipTransferred(address,address)"(
@@ -469,46 +489,46 @@ export interface DeferredBuy extends BaseContract {
       newOwner?: PromiseOrValue<string> | null
     ): OwnershipTransferredEventFilter;
 
-    "Withdraw(uint256,uint256)"(
+    "Withdraw(uint32,uint256,uint256)"(
       offerId?: null,
-      Timestamp?: null
+      withdrawFunds?: null,
+      timestamp?: null
     ): WithdrawEventFilter;
-    Withdraw(offerId?: null, Timestamp?: null): WithdrawEventFilter;
+    Withdraw(
+      offerId?: null,
+      withdrawFunds?: null,
+      timestamp?: null
+    ): WithdrawEventFilter;
   };
 
   estimateGas: {
     CLAIM_TIMEOUT(overrides?: CallOverrides): Promise<BigNumber>;
 
-    Offers(
+    _lastOffer(overrides?: CallOverrides): Promise<BigNumber>;
+
+    _offers(
       arg0: PromiseOrValue<BigNumberish>,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
-
-    OffersLength(overrides?: CallOverrides): Promise<BigNumber>;
 
     claimOffer(
       offerId: PromiseOrValue<BigNumberish>,
-      tokenId: PromiseOrValue<BigNumberish>,
+      ids: PromiseOrValue<BigNumberish>[],
+      amounts: PromiseOrValue<BigNumberish>[],
       overrides?: Overrides & { from?: PromiseOrValue<string> }
     ): Promise<BigNumber>;
 
-    claimOfferMultiple(
+    getLastOffer(overrides?: CallOverrides): Promise<BigNumber>;
+
+    getOffer(
       offerId: PromiseOrValue<BigNumberish>,
-      tokenIds: PromiseOrValue<BigNumberish>[],
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<BigNumber>;
-
-    claimedOffers(
-      arg0: PromiseOrValue<BigNumberish>,
       overrides?: CallOverrides
     ): Promise<BigNumber>;
 
-    getAllOffers(overrides?: CallOverrides): Promise<BigNumber>;
-
     makeAnOffer(
-      nftAddress: PromiseOrValue<string>,
+      item: IDeferredBuy.ItemStruct,
+      pricePerUnit: PromiseOrValue<BigNumberish>,
       availableAt: PromiseOrValue<BigNumberish>,
-      maxClaims: PromiseOrValue<BigNumberish>,
       overrides?: PayableOverrides & { from?: PromiseOrValue<string> }
     ): Promise<BigNumber>;
 
@@ -532,36 +552,31 @@ export interface DeferredBuy extends BaseContract {
   populateTransaction: {
     CLAIM_TIMEOUT(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
-    Offers(
+    _lastOffer(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    _offers(
       arg0: PromiseOrValue<BigNumberish>,
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
-
-    OffersLength(overrides?: CallOverrides): Promise<PopulatedTransaction>;
 
     claimOffer(
       offerId: PromiseOrValue<BigNumberish>,
-      tokenId: PromiseOrValue<BigNumberish>,
+      ids: PromiseOrValue<BigNumberish>[],
+      amounts: PromiseOrValue<BigNumberish>[],
       overrides?: Overrides & { from?: PromiseOrValue<string> }
     ): Promise<PopulatedTransaction>;
 
-    claimOfferMultiple(
+    getLastOffer(overrides?: CallOverrides): Promise<PopulatedTransaction>;
+
+    getOffer(
       offerId: PromiseOrValue<BigNumberish>,
-      tokenIds: PromiseOrValue<BigNumberish>[],
-      overrides?: Overrides & { from?: PromiseOrValue<string> }
-    ): Promise<PopulatedTransaction>;
-
-    claimedOffers(
-      arg0: PromiseOrValue<BigNumberish>,
       overrides?: CallOverrides
     ): Promise<PopulatedTransaction>;
 
-    getAllOffers(overrides?: CallOverrides): Promise<PopulatedTransaction>;
-
     makeAnOffer(
-      nftAddress: PromiseOrValue<string>,
+      item: IDeferredBuy.ItemStruct,
+      pricePerUnit: PromiseOrValue<BigNumberish>,
       availableAt: PromiseOrValue<BigNumberish>,
-      maxClaims: PromiseOrValue<BigNumberish>,
       overrides?: PayableOverrides & { from?: PromiseOrValue<string> }
     ): Promise<PopulatedTransaction>;
 

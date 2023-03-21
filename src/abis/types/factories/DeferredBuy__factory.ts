@@ -12,6 +12,12 @@ const _abi = [
     inputs: [
       {
         indexed: true,
+        internalType: "uint32",
+        name: "offerId",
+        type: "uint32",
+      },
+      {
+        indexed: true,
         internalType: "address",
         name: "claimer",
         type: "address",
@@ -19,7 +25,50 @@ const _abi = [
       {
         indexed: true,
         internalType: "address",
-        name: "nftAddress",
+        name: "token",
+        type: "address",
+      },
+      {
+        indexed: false,
+        internalType: "uint256[]",
+        name: "ids",
+        type: "uint256[]",
+      },
+      {
+        indexed: false,
+        internalType: "uint256[]",
+        name: "amounts",
+        type: "uint256[]",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "claimerFunds",
+        type: "uint256",
+      },
+    ],
+    name: "Claim",
+    type: "event",
+  },
+  {
+    anonymous: false,
+    inputs: [
+      {
+        indexed: false,
+        internalType: "uint32",
+        name: "offerId",
+        type: "uint32",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "offerer",
+        type: "address",
+      },
+      {
+        indexed: true,
+        internalType: "address",
+        name: "token",
         type: "address",
       },
       {
@@ -31,21 +80,8 @@ const _abi = [
       {
         indexed: false,
         internalType: "uint256",
-        name: "offerValue",
+        name: "amount",
         type: "uint256",
-      },
-    ],
-    name: "Claim",
-    type: "event",
-  },
-  {
-    anonymous: false,
-    inputs: [
-      {
-        indexed: true,
-        internalType: "address",
-        name: "nftAddress",
-        type: "address",
       },
       {
         indexed: false,
@@ -56,13 +92,7 @@ const _abi = [
       {
         indexed: false,
         internalType: "uint256",
-        name: "claims",
-        type: "uint256",
-      },
-      {
-        indexed: false,
-        internalType: "uint256",
-        name: "offerPrice",
+        name: "pricePerUnit",
         type: "uint256",
       },
     ],
@@ -93,23 +123,25 @@ const _abi = [
     inputs: [
       {
         indexed: false,
-        internalType: "uint256",
+        internalType: "uint32",
         name: "offerId",
+        type: "uint32",
+      },
+      {
+        indexed: false,
+        internalType: "uint256",
+        name: "withdrawFunds",
         type: "uint256",
       },
       {
         indexed: false,
         internalType: "uint256",
-        name: "Timestamp",
+        name: "timestamp",
         type: "uint256",
       },
     ],
     name: "Withdraw",
     type: "event",
-  },
-  {
-    stateMutability: "payable",
-    type: "fallback",
   },
   {
     inputs: [],
@@ -125,46 +157,73 @@ const _abi = [
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    name: "Offers",
+    inputs: [],
+    name: "_lastOffer",
     outputs: [
       {
+        internalType: "uint32",
+        name: "",
+        type: "uint32",
+      },
+    ],
+    stateMutability: "view",
+    type: "function",
+  },
+  {
+    inputs: [
+      {
+        internalType: "uint32",
+        name: "",
+        type: "uint32",
+      },
+    ],
+    name: "_offers",
+    outputs: [
+      {
+        components: [
+          {
+            internalType: "enum IDeferredBuy.ItemType",
+            name: "itemType",
+            type: "uint8",
+          },
+          {
+            internalType: "address",
+            name: "token",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "identifier",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "amount",
+            type: "uint256",
+          },
+        ],
+        internalType: "struct IDeferredBuy.Item",
+        name: "item",
+        type: "tuple",
+      },
+      {
         internalType: "address",
-        name: "nftAddress",
+        name: "offerer",
         type: "address",
       },
       {
-        internalType: "uint32",
-        name: "availableAt",
-        type: "uint32",
-      },
-      {
-        internalType: "uint32",
-        name: "maxClaims",
-        type: "uint32",
-      },
-      {
         internalType: "uint256",
-        name: "offerPrice",
+        name: "availableAt",
         type: "uint256",
       },
-    ],
-    stateMutability: "view",
-    type: "function",
-  },
-  {
-    inputs: [],
-    name: "OffersLength",
-    outputs: [
       {
         internalType: "uint256",
-        name: "",
+        name: "pricePerUnit",
+        type: "uint256",
+      },
+      {
+        internalType: "uint256",
+        name: "claimed",
         type: "uint256",
       },
     ],
@@ -174,14 +233,19 @@ const _abi = [
   {
     inputs: [
       {
-        internalType: "uint256",
+        internalType: "uint32",
         name: "offerId",
-        type: "uint256",
+        type: "uint32",
       },
       {
-        internalType: "uint256",
-        name: "tokenId",
-        type: "uint256",
+        internalType: "uint256[]",
+        name: "ids",
+        type: "uint256[]",
+      },
+      {
+        internalType: "uint256[]",
+        name: "amounts",
+        type: "uint256[]",
       },
     ],
     name: "claimOffer",
@@ -190,72 +254,81 @@ const _abi = [
     type: "function",
   },
   {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "offerId",
-        type: "uint256",
-      },
-      {
-        internalType: "uint256[]",
-        name: "tokenIds",
-        type: "uint256[]",
-      },
-    ],
-    name: "claimOfferMultiple",
-    outputs: [],
-    stateMutability: "nonpayable",
-    type: "function",
-  },
-  {
-    inputs: [
-      {
-        internalType: "uint256",
-        name: "",
-        type: "uint256",
-      },
-    ],
-    name: "claimedOffers",
+    inputs: [],
+    name: "getLastOffer",
     outputs: [
       {
-        internalType: "uint256",
+        internalType: "uint32",
         name: "",
-        type: "uint256",
+        type: "uint32",
       },
     ],
     stateMutability: "view",
     type: "function",
   },
   {
-    inputs: [],
-    name: "getAllOffers",
+    inputs: [
+      {
+        internalType: "uint32",
+        name: "offerId",
+        type: "uint32",
+      },
+    ],
+    name: "getOffer",
     outputs: [
       {
         components: [
           {
+            components: [
+              {
+                internalType: "enum IDeferredBuy.ItemType",
+                name: "itemType",
+                type: "uint8",
+              },
+              {
+                internalType: "address",
+                name: "token",
+                type: "address",
+              },
+              {
+                internalType: "uint256",
+                name: "identifier",
+                type: "uint256",
+              },
+              {
+                internalType: "uint256",
+                name: "amount",
+                type: "uint256",
+              },
+            ],
+            internalType: "struct IDeferredBuy.Item",
+            name: "item",
+            type: "tuple",
+          },
+          {
             internalType: "address",
-            name: "nftAddress",
+            name: "offerer",
             type: "address",
           },
           {
-            internalType: "uint32",
+            internalType: "uint256",
             name: "availableAt",
-            type: "uint32",
-          },
-          {
-            internalType: "uint32",
-            name: "maxClaims",
-            type: "uint32",
+            type: "uint256",
           },
           {
             internalType: "uint256",
-            name: "offerPrice",
+            name: "pricePerUnit",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "claimed",
             type: "uint256",
           },
         ],
-        internalType: "struct DeferredBuy.Offer[]",
+        internalType: "struct IDeferredBuy.Offer",
         name: "",
-        type: "tuple[]",
+        type: "tuple",
       },
     ],
     stateMutability: "view",
@@ -264,18 +337,40 @@ const _abi = [
   {
     inputs: [
       {
-        internalType: "address",
-        name: "nftAddress",
-        type: "address",
+        components: [
+          {
+            internalType: "enum IDeferredBuy.ItemType",
+            name: "itemType",
+            type: "uint8",
+          },
+          {
+            internalType: "address",
+            name: "token",
+            type: "address",
+          },
+          {
+            internalType: "uint256",
+            name: "identifier",
+            type: "uint256",
+          },
+          {
+            internalType: "uint256",
+            name: "amount",
+            type: "uint256",
+          },
+        ],
+        internalType: "struct IDeferredBuy.Item",
+        name: "item",
+        type: "tuple",
       },
       {
         internalType: "uint256",
-        name: "availableAt",
+        name: "pricePerUnit",
         type: "uint256",
       },
       {
         internalType: "uint256",
-        name: "maxClaims",
+        name: "availableAt",
         type: "uint256",
       },
     ],
@@ -320,19 +415,15 @@ const _abi = [
   {
     inputs: [
       {
-        internalType: "uint256",
+        internalType: "uint32",
         name: "offerId",
-        type: "uint256",
+        type: "uint32",
       },
     ],
     name: "withdraw",
     outputs: [],
     stateMutability: "nonpayable",
     type: "function",
-  },
-  {
-    stateMutability: "payable",
-    type: "receive",
   },
 ] as const;
 

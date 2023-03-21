@@ -11,6 +11,7 @@ import DeferredBuyAbi from "../../abis/DeferredBuy.json";
 import { Field, PseudoFormContainer } from "./styled";
 
 import "./datepicker.css";
+import { DeferredBuy } from "../../abis/types";
 
 const CreateOffer = () => {
     const { account } = useWeb3React();
@@ -19,7 +20,7 @@ const CreateOffer = () => {
     const [availableAt, setAvailableAt] = useState<Date|null>(new Date());
     const [offerPrice, setOfferPrice] = useState<string>();
 
-    const deferredBuyContract = useContract(deferredBuyAddress, DeferredBuyAbi);
+    const deferredBuyContract = useContract<DeferredBuy>(deferredBuyAddress, DeferredBuyAbi);
 
     const handleCreateOffer = () => {
         if(!deferredBuyContract || !account || !availableAt || !tokensToBuy || !nftAddress) {
