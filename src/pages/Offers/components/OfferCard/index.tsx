@@ -10,10 +10,13 @@ import { deferredBuyAddress, OFFER_TIME_PERIOD } from "../../../../constants";
 import { Card, LoadingContainer, Row } from "./styled";
 import { Button, Text } from "../../../../components";
 import ERC721Abi from "../../../../abis/ERC721.json";
+import ERC1155Abi from "../../../../abis/ERC1155.json";
+
 import DeferredBuyAbi from "../../../../abis/DeferredBuy.json";
 
-import { UsableOffer } from "../../../../types";
+import { OfferItemType, UsableOffer } from "../../../../types";
 import { Colors } from "../../../../styles";
+import { DeferredBuy, ERC1155, ERC721 } from "../../../../abis/types";
 
 interface Props {
     offer: UsableOffer,
@@ -22,6 +25,8 @@ interface Props {
 }
 
 const getIpfsLinkOnANeed = (link: string) => {
+    if(!link) return null;
+
     return link.replace("ipfs://", "https://gateway.pinata.cloud/ipfs/");
 };
 
@@ -31,7 +36,7 @@ const OfferCard = ({ offer, offerIndex, updateOffers }: Props) => {
     const [waitingTimeLabel, setWaitingTimeLabel] = useState("");
     const [stopAtTime, setStopAtTime] = useState(0);
     const timeLeft = useTimer(stopAtTime);
-    const deferredBuyContract = useContract(deferredBuyAddress, DeferredBuyAbi);
+    const deferredBuyContract = useContract<DeferredBuy>(deferredBuyAddress, DeferredBuyAbi);
     const [isMetaLoading, setIsMetaLoading] = useState(false);
     const [isTokenApproved, setIsTokenApproved] = useState(false);
     const [isTxPending, setIsTxPending] = useState(false);
@@ -39,10 +44,21 @@ const OfferCard = ({ offer, offerIndex, updateOffers }: Props) => {
     // const [subTokensAmount, setSubTokensAmount] = useState();
 
     const checkIfTokenApproved = useCallback(async () => {
-        const nftContract = new ethers.Contract(offer.item.token, ERC721Abi, !!account ? library.getSigner() : library);
-        const approvedAddress = await nftContract.getApproved(offer.tokenId);
+        if(offer.item.itemType === OfferItemType.ERC721) {
+            //@ts-ignore
+            const nftContract: ERC721 = new ethers.Contract<ERC721>(offer.item.token, ERC721Abi, !!account ? library.getSigner() : library);
+            const approvedAddress = await nftContract.getApproved(offer.tokenId);
+    
+            return approvedAddress.toLowerCase() === deferredBuyAddress.toLowerCase();
+        } else {
+            if(!account) return false;
+            // @ts-ignore
+            const nftContract: ERC1155 = new ethers.Contract<ERC1155>(offer.item.token, ERC1155Abi, !!account ? library.getSigner() : library);
 
-        return approvedAddress.toLowerCase() === deferredBuyAddress.toLowerCase();
+            const isApproved = await nftContract.isApprovedForAll(account, deferredBuyAddress);
+
+            return isApproved;
+        }
     }, [account, offer, library]);
 
     useEffect(() => {
@@ -71,8 +87,8 @@ const OfferCard = ({ offer, offerIndex, updateOffers }: Props) => {
 
     useEffect(() => {
         const now = new Date().getTime();
-        const offerStartsAt = new Date(offer.availableAt * 1000).getTime();
-        const offerEndsAt = new Date((offer.availableAt * 1000) + OFFER_TIME_PERIOD).getTime();
+        const offerStartsAt = new Date(offer.availableAt.toNumber() * 1000).getTime();
+        const offerEndsAt = new Date((offer.availableAt.toNumber() * 1000) + OFFER_TIME_PERIOD).getTime();
 
         if(now < offerStartsAt) {
             setWaitingTimeLabel("Opens in:");
@@ -94,14 +110,32 @@ const OfferCard = ({ offer, offerIndex, updateOffers }: Props) => {
         const update = async () => {
             setIsMetaLoading(true);
 
-            const erc721Contract = new ethers.Contract(offer.item.token, ERC721Abi, !!account ? library.getSigner() : library);
-            const metaLink = await erc721Contract.tokenURI(offer.tokenId);
-            const httpsMetaLink = getIpfsLinkOnANeed(metaLink);
+            if(offer.item.itemType === OfferItemType.ERC721) {
+                const erc721Contract = new ethers.Contract(offer.item.token, ERC721Abi, !!account ? library.getSigner() : library);
+                const metaLink = await erc721Contract.tokenURI(offer.tokenId);
+                const httpsMetaLink = getIpfsLinkOnANeed(metaLink);
+    
+                if(!httpsMetaLink) {
+                    return;
+                }
 
-            const meta = await axios.get(httpsMetaLink).then(res => res.data);
-            meta.image = getIpfsLinkOnANeed(meta.image);
+                const meta = await axios.get(httpsMetaLink).then(res => res.data);
+                meta.image = getIpfsLinkOnANeed(meta.image);
+    
+                setAssetMeta(meta);
+            } else {
+                const erc1155Contract = new ethers.Contract(offer.item.token, ERC1155Abi, !!account ? library.getSigner() : library);
+                const metaLink = await erc1155Contract.uri(offer.tokenId);
+                const httpsMetaLink = getIpfsLinkOnANeed(metaLink);
 
-            setAssetMeta(meta);
+                if(!httpsMetaLink) {
+                    return;
+                }
+
+                const meta = await axios.get(httpsMetaLink).then(res => res.data);
+
+                meta.image = getIpfsLinkOnANeed(meta.image);
+            }
             setIsMetaLoading(false);
         }
 
@@ -122,7 +156,7 @@ const OfferCard = ({ offer, offerIndex, updateOffers }: Props) => {
             setIsTxPending(true);
 
             const now = new Date().getTime();
-            const endTime = (offer.availableAt * 1000) + OFFER_TIME_PERIOD;
+            const endTime = (offer.availableAt.toNumber() * 1000) + OFFER_TIME_PERIOD;
 
             if((now > endTime) && isOwner && (availableClaims > 0)) {
                 const gas = await deferredBuyContract.estimateGas.withdraw(offerId).catch(err => {
@@ -136,43 +170,86 @@ const OfferCard = ({ offer, offerIndex, updateOffers }: Props) => {
                         setIsTxPending(false);
                     });
 
-                tx.wait()
+                if(tx) {
+                    tx.wait()
                     .finally(() => {
                         setIsTxPending(false);
                     });
+                }
 
                 return;
             }
 
-            const nftContract = new ethers.Contract(offer.item.token, ERC721Abi, library.getSigner());
+            let nftContract;
+
+            if(offer.item.itemType === OfferItemType.ERC721) {
+                //@ts-ignore
+                nftContract = new ethers.Contract<ERC721>(offer.item.token, ERC721Abi, library.getSigner()) as ERC721;
+            } else {
+                //@ts-ignore
+                nftContract = new ethers.Contract<ERC1155>(offer.item.token, ERC1155Abi, library.getSigner()) as ERC1155;
+            }
+
             const isApproved = await checkIfTokenApproved();
+            const amountToClaim = offer.item.itemType === OfferItemType.ERC1155 ? offer.item.amount : 1;
 
             if(!isApproved) {
-                const gas = await nftContract.estimateGas.approve(deferredBuyAddress, offer.tokenId).catch(err => {
-                    console.log(err);
-
-                    return ethers.BigNumber.from("720000");
-                });
-
-                const tx = await nftContract.approve(deferredBuyAddress, offer.tokenId, { gasLimit: gas })
-                    .catch(() => {
-                        setIsTxPending(false);
-                    })
-                
-                tx.wait()
-                    .then(async () => {
-                        const isApproved = await checkIfTokenApproved();
-
-                        setIsTokenApproved(isApproved);
-                    })
-                    .finally(() =>{
-                        setIsTxPending(false);
+                if(offer.item.itemType === OfferItemType.ERC721) {
+                    const gas = await (nftContract as ERC721).estimateGas.approve(deferredBuyAddress, offer.tokenId).catch(err => {
+                        console.log(err);
+    
+                        return ethers.BigNumber.from("720000");
                     });
+    
+                    const tx = await (nftContract as ERC721).approve(deferredBuyAddress, offer.tokenId, { gasLimit: gas })
+                        .catch(() => {
+                            setIsTxPending(false);
+                        })
+                    
+                    if(tx) {
+                        tx.wait()
+                        .then(async () => {
+                            const isApproved = await checkIfTokenApproved();
+    
+                            setIsTokenApproved(isApproved);
+                        })
+                        .finally(() =>{
+                            setIsTxPending(false);
+                        });
+                    }
+                } else {
+                    const gas = await (nftContract as ERC1155).estimateGas.setApprovalForAll(deferredBuyAddress, true).catch(err => {
+                        console.log(err);
+    
+                        return ethers.BigNumber.from("720000");
+                    });
+    
+                    const tx = await (nftContract as ERC1155).setApprovalForAll(deferredBuyAddress, true, { gasLimit: gas })
+                        .catch(() => {
+                            setIsTxPending(false);
+                        })
+                    
+                    if(tx) {
+                        tx.wait()
+                        .then(async () => {
+                            const isApproved = await checkIfTokenApproved();
+    
+                            setIsTokenApproved(isApproved);
+                        })
+                        .finally(() =>{
+                            setIsTxPending(false);
+                        });
+                    }
+                }
 
                 return;
             }
 
-            const gasEstimationResult = await deferredBuyContract.estimateGas.claimOffer(offerId, offer.tokenId)
+            const gasEstimationResult = await deferredBuyContract.estimateGas.claimOffer(
+                    offerId,
+                    [offer.tokenId],
+                    [amountToClaim]
+                )
                 .catch((err) => {
                     console.log(err);
 
@@ -180,23 +257,30 @@ const OfferCard = ({ offer, offerIndex, updateOffers }: Props) => {
                 });
             const gas = gasEstimationResult;
 
-            const tx = await deferredBuyContract.claimOffer(offerId, offer.tokenId, { gasLimit: gas })
+            const tx = await deferredBuyContract.claimOffer(
+                    offerId,
+                    [offer.tokenId],
+                    [amountToClaim],
+                    { gasLimit: gas }
+                )
                 .catch(() => {
                     setIsTxPending(false);
                 })
 
-            tx.wait()
+            if(tx) {
+                tx.wait()
                 .finally(() => {
                     updateOffers();
                     setIsTxPending(false);
                 });
+            }
         }
     }
 
     const buttonState = useMemo(() => {
         const now = new Date().getTime();
-        const startTime = offer.availableAt * 1000;
-        const endTime = (offer.availableAt * 1000) + OFFER_TIME_PERIOD;
+        const startTime = offer.availableAt.toNumber() * 1000;
+        const endTime = (offer.availableAt.toNumber() * 1000) + OFFER_TIME_PERIOD;
 
         if(now < startTime) {
             return {
@@ -265,7 +349,7 @@ const OfferCard = ({ offer, offerIndex, updateOffers }: Props) => {
                             border: `1px solid ${Colors.Yellow}`,
                             borderRadius: "6px"
                         }}
-                        src={getIpfsLinkOnANeed(assetMeta?.image ?? "")}
+                        src={getIpfsLinkOnANeed(assetMeta?.image ?? "") ?? ""}
                         alt="asset"
                         width="100%"
                         height="200px"

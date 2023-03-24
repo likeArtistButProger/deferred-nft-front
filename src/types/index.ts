@@ -17,7 +17,7 @@ export type Offer = {
     offerId:              number,
     item:                 OfferItem,
     offerer:              string,
-    availableAt:          number,
+    availableAt:          ethers.BigNumber,
     pricePerUnit:         ethers.BigNumber,
     claimed:              ethers.BigNumber,
 }
