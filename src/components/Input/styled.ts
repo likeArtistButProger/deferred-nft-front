@@ -1,6 +1,6 @@
-import styled from "styled-components";
+import styled, { css } from "styled-components";
 
-const InputStyled = styled.input`
+const InputStyled = styled.input<{ small?: boolean }>`
     font-size: 18px;
     line-height: 28px;
     padding: 6px;
@@ -9,6 +9,10 @@ const InputStyled = styled.input`
     outline: none;
     border: 1px solid ${props => props.theme.colors.Yellow};
     border-radius: 6px;
+
+    ${props => props.small && css`
+        
+    `}
 `;
 
 export {

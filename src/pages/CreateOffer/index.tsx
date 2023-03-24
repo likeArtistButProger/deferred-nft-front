@@ -3,8 +3,8 @@ import { useWeb3React } from "@web3-react/core";
 import DatePicker from "react-datepicker";
 import bn from "bignumber.js";
 
-import { Button, Input, Text } from "../../components";
-import { deferredBuyAddress } from "../../constants";
+import { Button, Input, Select, Text } from "../../components";
+import { deferredBuyAddress, itemTypes } from "../../constants";
 import { useContract } from "../../hooks";
 import DeferredBuyAbi from "../../abis/DeferredBuy.json";
 
@@ -12,31 +12,59 @@ import { Field, PseudoFormContainer } from "./styled";
 
 import "./datepicker.css";
 import { DeferredBuy } from "../../abis/types";
+import { OfferItemType } from "../../types";
 
 const CreateOffer = () => {
     const { account } = useWeb3React();
     const [nftAddress, setNftAddress] = useState<string>();
     const [tokensToBuy, setTokensToBuy] = useState<string>();
     const [availableAt, setAvailableAt] = useState<Date|null>(new Date());
-    const [offerPrice, setOfferPrice] = useState<string>();
+    const [pricePerUnit, setPricePerUnit] = useState<string>();
+    const [tokenIdToBuy, setTokenIdToBuy] = useState<string>();
+    const [selectedItemType, setSelectedItemType] = useState(itemTypes[0]);
 
     const deferredBuyContract = useContract<DeferredBuy>(deferredBuyAddress, DeferredBuyAbi);
 
     const handleCreateOffer = () => {
-        if(!deferredBuyContract || !account || !availableAt || !tokensToBuy || !nftAddress) {
+        if(
+            !deferredBuyContract
+            || !account
+            || !availableAt
+            || !tokensToBuy
+            || !nftAddress
+            || (parseInt(tokensToBuy) === 1 && !tokenIdToBuy)
+        ) {
             return;
         }
 
         const startFrom = Math.floor(availableAt.getTime() / 1000);
 
         const decimals = new bn(10).pow(18);
-        const offerPriceArg = new bn(offerPrice ?? "0").times(decimals).toFixed();
+        const pricePerUnitArg = new bn(pricePerUnit ?? "0").times(decimals);
+        const offerPriceArg = pricePerUnitArg.times(tokensToBuy).toFixed();
 
-        deferredBuyContract.makeAnOffer(nftAddress, startFrom, tokensToBuy, { value: offerPriceArg });
+        const itemType = selectedItemType.value === 0 ? OfferItemType.ERC721 : OfferItemType.ERC1155;
+
+        const offerItem = {
+            itemType:   itemType,
+            token:      nftAddress,
+            identifier: tokenIdToBuy ?? 0,
+            amount:     tokensToBuy
+        }
+        
+        deferredBuyContract.makeAnOffer(offerItem, pricePerUnitArg.toFixed(), startFrom, { value: offerPriceArg });
     }
 
     return (
         <PseudoFormContainer>
+            <Field>
+                <Text variant="l" color="Purple">Token Type</Text>
+                <Select
+                    selected={selectedItemType}
+                    onSelect={setSelectedItemType}
+                    options={itemTypes}
+                />
+            </Field>
             <Field>
                 <Text variant="l" color="Purple">NFT Address</Text>
                 <Input type="text" value={nftAddress} onChange={(event) => { setNftAddress(event.target.value) }} />
@@ -54,9 +82,17 @@ const CreateOffer = () => {
                     dateFormat="MMMM d, yyyy h:mm aa"
                 />
             </Field>
+            {
+                tokensToBuy && parseInt(tokensToBuy) === 1 && (
+                    <Field>
+                        <Text variant="l" color="Purple">Token Id</Text>
+                        <Input type="text" value={tokenIdToBuy} onChange={(event) => { setTokenIdToBuy(event.target.value) }} />
+                    </Field>
+                )
+            }
             <Field>
-                <Text variant="l" color="Purple">Offer price</Text>
-                <Input type="text" value={offerPrice} onChange={(event) => { setOfferPrice(event.target.value) }} />
+                <Text variant="l" color="Purple">Price per unit</Text>
+                <Input type="text" value={pricePerUnit} onChange={(event) => { setPricePerUnit(event.target.value) }} />
             </Field>
             <Button variant="usual" onClick={handleCreateOffer}>
                 Create offer

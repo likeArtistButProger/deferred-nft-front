@@ -11,7 +11,7 @@ const Offers = () => {
             {
                 offers.map((offer, index) => (
                     <OfferCard
-                        key={offer.nftAddress+offer.tokenId}
+                        key={offer.item.token+offer.tokenId}
                         offer={offer}
                         offerIndex={offer.offerId}
                         updateOffers={updateOffers}

@@ -15,6 +15,11 @@ const Row = styled.div<{ mt?: string, centered?: boolean }>`
     ${({centered}) => centered && css` justify-content: center; `}
 `;
 
+const Column = styled.div`
+    display: flex;
+    flex-direction: column;
+`;
+
 const LoadingContainer = styled.div`
 
 `;
@@ -22,5 +27,6 @@ const LoadingContainer = styled.div`
 export {
     Card,
     Row,
+    Column,
     LoadingContainer,
 }

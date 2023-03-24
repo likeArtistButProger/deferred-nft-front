@@ -12,7 +12,7 @@ import { Button, Text } from "../../../../components";
 import ERC721Abi from "../../../../abis/ERC721.json";
 import DeferredBuyAbi from "../../../../abis/DeferredBuy.json";
 
-import type { UsableOffer } from "../../../../types";
+import { UsableOffer } from "../../../../types";
 import { Colors } from "../../../../styles";
 
 interface Props {
@@ -36,9 +36,10 @@ const OfferCard = ({ offer, offerIndex, updateOffers }: Props) => {
     const [isTokenApproved, setIsTokenApproved] = useState(false);
     const [isTxPending, setIsTxPending] = useState(false);
     const [isOwner, setIsOwner] = useState(false);
+    // const [subTokensAmount, setSubTokensAmount] = useState();
 
     const checkIfTokenApproved = useCallback(async () => {
-        const nftContract = new ethers.Contract(offer.nftAddress, ERC721Abi, !!account ? library.getSigner() : library);
+        const nftContract = new ethers.Contract(offer.item.token, ERC721Abi, !!account ? library.getSigner() : library);
         const approvedAddress = await nftContract.getApproved(offer.tokenId);
 
         return approvedAddress.toLowerCase() === deferredBuyAddress.toLowerCase();
@@ -93,7 +94,7 @@ const OfferCard = ({ offer, offerIndex, updateOffers }: Props) => {
         const update = async () => {
             setIsMetaLoading(true);
 
-            const erc721Contract = new ethers.Contract(offer.nftAddress, ERC721Abi, !!account ? library.getSigner() : library);
+            const erc721Contract = new ethers.Contract(offer.item.token, ERC721Abi, !!account ? library.getSigner() : library);
             const metaLink = await erc721Contract.tokenURI(offer.tokenId);
             const httpsMetaLink = getIpfsLinkOnANeed(metaLink);
 
@@ -109,11 +110,11 @@ const OfferCard = ({ offer, offerIndex, updateOffers }: Props) => {
 
     const offerPrice = useMemo(() => {
         const decimals = new bn(10).pow(18);
-        return new bn(offer?.offerPrice.toString() ?? "0").div(decimals).toFixed(6)
+        return new bn(offer?.pricePerUnit.toString() ?? "0").div(decimals).toFixed(6)
     }, [offer]);
 
     const availableClaims = useMemo(() => {
-        return ethers.BigNumber.from(offer.maxClaims).sub(offer.claimedTokensCount).toNumber();
+        return ethers.BigNumber.from(offer.item.amount).sub(offer.claimed).toNumber();
     }, [offer]);
 
     const handleClaimOffer = async (offerId: number) => {
@@ -143,7 +144,7 @@ const OfferCard = ({ offer, offerIndex, updateOffers }: Props) => {
                 return;
             }
 
-            const nftContract = new ethers.Contract(offer.nftAddress, ERC721Abi, library.getSigner());
+            const nftContract = new ethers.Contract(offer.item.token, ERC721Abi, library.getSigner());
             const isApproved = await checkIfTokenApproved();
 
             if(!isApproved) {
@@ -291,6 +292,16 @@ const OfferCard = ({ offer, offerIndex, updateOffers }: Props) => {
                     {availableClaims}
                 </Text>
             </Row>
+            {/* {
+                offer.item.itemType === OfferItemType.ERC1155 && (
+                    <Column>
+                        <Text variant="m" color="Yellow">Amount to claim</Text>
+                        <Input
+                            small
+                        />
+                    </Column>
+                )
+            } */}
             <Row mt="10" centered>
                 <Button variant="usual" onClick={() => { handleClaimOffer(offerIndex) }} disabled={buttonState.disabled}>
                     {buttonState.text}

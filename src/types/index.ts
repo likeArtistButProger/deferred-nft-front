@@ -2,8 +2,8 @@ import { ethers } from "ethers"
 import { OwnedNft } from "alchemy-sdk";
 
 export enum OfferItemType {
-    ERC721,
-    ERC1155
+    ERC721  = 0,
+    ERC1155 = 1
 }
 
 export type OfferItem = {
